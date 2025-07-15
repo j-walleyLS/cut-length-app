@@ -1,4 +1,4 @@
-# NOTE: This version matches the original logic exactly, with optional forced slab assignment per unit.
+# Streamlit Cut Length Optimiser
 
 import math
 import copy
@@ -122,37 +122,102 @@ def pack_one_slab(slab_width, slab_height, units):
     return best_solution
 
 # -----------------------------
-# UI Input Collection (Updated Output)
+# UI
 # -----------------------------
-# [... rest of code remains unchanged until results section ...]
+st.set_page_config(page_title="Cut Length Optimiser")
+st.title("🪓 Cut Length Optimiser")
 
+if "units" not in st.session_state:
+    st.session_state.units = []
+
+if "custom_slabs" not in st.session_state:
+    st.session_state.custom_slabs = []
+
+st.sidebar.header("Slab Sizes")
+def_slabs = [(900, 600), (600, 600), (1800, 700)]
+def_slabs_selected = st.sidebar.multiselect("Available Slab Sizes", def_slabs, default=def_slabs)
+custom_input = st.sidebar.text_input("Custom Slab Sizes (e.g. 800x400,1000x500)")
+
+if custom_input:
+    try:
+        st.session_state.custom_slabs = [parse_dimensions(x) for x in custom_input.split(",") if x.strip()]
+    except:
+        st.sidebar.warning("Invalid custom slab size format")
+
+slab_sizes = def_slabs_selected + st.session_state.custom_slabs
+
+st.sidebar.header("Finished Units")
+with st.sidebar.form("unit_form"):
+    width = st.number_input("Width (mm)", min_value=1, value=300)
+    height = st.number_input("Height (mm)", min_value=1, value=200)
+    quantity = st.number_input("Quantity", min_value=1, value=1)
+    forced = st.multiselect("Force use of specific slab(s)?", slab_sizes, default=[])
+    submitted = st.form_submit_button("Add Unit")
+    if submitted:
+        st.session_state.units.append({"width": width, "height": height, "quantity": quantity, "forced_slabs": forced, "order": len(st.session_state.units)})
+
+if st.sidebar.button("Clear Units"):
+    st.session_state.units = []
+
+# -----------------------------
+# RUN & RESULTS
+# -----------------------------
+if slab_sizes and st.session_state.units:
+    st.header("Results")
     global_boqlines = {}
+    slab_outputs = []
+
+    for slab in slab_sizes:
+        sw, sh = slab
+        slab_units = filter_units_for_slab(st.session_state.units, slab)
+        if not slab_units:
+            continue
+        remaining = copy.deepcopy(slab_units)
+        produced = {}
+        cut_length = 0
+        while any(u["quantity"] > 0 for u in remaining):
+            best = pack_one_slab(sw, sh, remaining)
+            if not best["layout"]:
+                break
+            counts = {}
+            for p in best["layout"]:
+                counts[p.unit_order] = counts.get(p.unit_order, 0) + 1
+            for u in remaining:
+                if u["order"] in counts:
+                    used = counts[u["order"]]
+                    u["quantity"] -= used
+                    produced[u["order"]] = produced.get(u["order"], 0) + used
+            cut_length += best["cost"]
+
+        area = sum(u["width"] * u["height"] * qty for u in st.session_state.units for order, qty in produced.items() if u["order"] == order)
+        slab_outputs.append({"slab": f"{sw}x{sh}", "units": produced, "cut_length": cut_length, "area": area})
 
     for result in slab_outputs:
-            st.subheader(f"Results for {result['slab']} mm")
-            st.write(f"Units placed: {sum(result['units'].values())}")
-            st.write(f"Total cut length: {result['cut_length'] / 1000:.2f} m")
-            st.write(f"Produced area: {result['area'] / 1e6:.2f} m²")
+        st.subheader(f"Results for {result['slab']} mm")
+        st.write(f"Units placed: {sum(result['units'].values())}")
+        st.write(f"Total cut length: {result['cut_length'] / 1000:.2f} m")
+        st.write(f"Produced area: {result['area'] / 1e6:.2f} m²")
+        st.markdown("**Bill of Quantities (This Slab):**")
+        for order in sorted(result["units"]):
+            u = next(u for u in st.session_state.units if u["order"] == order)
+            qty = result['units'][order]
+            st.text(f"{qty}no. {u['width']}x{u['height']} mm")
+            global_boqlines[(u['width'], u['height'])] = global_boqlines.get((u['width'], u['height']), 0) + qty
 
-            st.markdown("**Bill of Quantities (This Slab):**")
-            for order in sorted(result["units"]):
-                u = next(u for u in st.session_state.units if u["order"] == order)
-                qty = result['units'][order]
-                st.text(f"{qty}no. {u['width']}x{u['height']} mm")
-                global_boqlines[(u['width'], u['height'])] = global_boqlines.get((u['width'], u['height']), 0) + qty
+    if global_boqlines:
+        st.markdown("---")
+        st.subheader("📦 Global Bill of Quantities")
+        for (w, h), qty in sorted(global_boqlines.items()):
+            st.text(f"{qty}no. {w}x{h} mm")
 
-                if global_boqlines:
-                    st.markdown("---")
-            st.subheader("📦 Global Bill of Quantities")
-            for (w, h), qty in sorted(global_boqlines.items()):
-                st.text(f"{qty}no. {w}x{h} mm")
-
-            too_large = []
-            for u in st.session_state.units:
-                if all(unit_too_large(u, sw, sh) for sw, sh in slab_sizes):
-                    too_large.append(u)
-            if too_large:
-                st.markdown("---")
-            st.markdown("**Units Too Large to Produce:**")
-            for u in too_large:
-                st.text(f"{u['quantity']}no. {u['width']}x{u['height']} mm *")
+    too_large = []
+    for u in st.session_state.units:
+        if all(unit_too_large(u, sw, sh) for sw, sh in slab_sizes):
+            too_large.append(u)
+    if too_large:
+        st.markdown("---")
+        st.markdown("**Units Too Large to Produce:**")
+        for u in too_large:
+            st.text(f"{u['quantity']}no. {u['width']}x{u['height']} mm *")
+else:
+    st.info("Use the sidebar to define available slab sizes and add finished units.")
