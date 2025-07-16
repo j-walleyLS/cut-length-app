@@ -225,7 +225,7 @@ for slab in col1_slabs:
         st.rerun()
     
     # Add small gap after each slab button
-    col1.markdown("<div style='height: 0.1rem;'></div>", unsafe_allow_html=True)
+    col1.markdown("<div style='margin-bottom: 0.05rem !important; height: 0.05rem;'></div>", unsafe_allow_html=True)
 
 for slab in col2_slabs:
     slab_key = f"{slab[0]}×{slab[1]}"
@@ -245,7 +245,7 @@ for slab in col2_slabs:
         st.rerun()
     
     # Add small gap after each slab button
-    col2.markdown("<div style='height: 0.1rem;'></div>", unsafe_allow_html=True)
+    col2.markdown("<div style='margin-bottom: 0.05rem !important; height: 0.05rem;'></div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 
