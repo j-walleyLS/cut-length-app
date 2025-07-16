@@ -162,6 +162,11 @@ st.markdown("""
         margin-bottom: 0.3rem; /* Custom slab × buttons */
     }
     
+    /* INDEPENDENT SPACING - Gap before horizontal separator (after custom slabs) */
+    .stSidebar > div > div:nth-child(4) {
+        margin-bottom: 0.375rem; /* Half of the default 0.75rem */
+    }
+    
     /* INDEPENDENT SPACING - Add Unit, Update List, Clear All buttons */
     .stSidebar > div > div:nth-child(5) .stButton {
         margin-bottom: 0.6rem; /* Unit management buttons */
