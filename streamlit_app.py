@@ -152,28 +152,43 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 # -----------------------------
 st.sidebar.header("📐 Available Slab Sizes")
 
-# Define all available slab sizes
-def_slabs = [(900, 600), (600, 600), (1800, 700), (900, 500), (1500, 500), (2000, 500), (900, 700)]
+# Define all available slab sizes in specific column order
+col1_slabs = [(600, 600), (900, 700), (900, 500), (2000, 500)]
+col2_slabs = [(900, 600), (1800, 700), (1500, 500)]
 
 # Create a responsive grid layout for slab selection
 col1, col2 = st.sidebar.columns(2)
 
-for i, slab in enumerate(def_slabs):
-    col = col1 if i % 2 == 0 else col2
+# Column 1 slabs
+for slab in col1_slabs:
     slab_key = f"{slab[0]}×{slab[1]}"
-    
-    # Check if this slab is currently selected
     is_selected = slab in st.session_state.selected_slabs
     
-    # Create button with different styling based on selection
-    if col.button(
+    if col1.button(
         f"{'✓ ' if is_selected else ''}{slab_key}",
         key=f"slab_{slab}",
         help=f"Click to {'remove' if is_selected else 'add'} {slab_key}mm slab",
         type="primary" if is_selected else "secondary",
         use_container_width=True
     ):
-        # Toggle selection
+        if slab in st.session_state.selected_slabs:
+            st.session_state.selected_slabs.remove(slab)
+        else:
+            st.session_state.selected_slabs.append(slab)
+        st.rerun()
+
+# Column 2 slabs
+for slab in col2_slabs:
+    slab_key = f"{slab[0]}×{slab[1]}"
+    is_selected = slab in st.session_state.selected_slabs
+    
+    if col2.button(
+        f"{'✓ ' if is_selected else ''}{slab_key}",
+        key=f"slab_{slab}",
+        help=f"Click to {'remove' if is_selected else 'add'} {slab_key}mm slab",
+        type="primary" if is_selected else "secondary",
+        use_container_width=True
+    ):
         if slab in st.session_state.selected_slabs:
             st.session_state.selected_slabs.remove(slab)
         else:
@@ -188,16 +203,6 @@ if st.session_state.selected_slabs:
             st.markdown(f"• {slab[0]}×{slab[1]}mm")
 else:
     st.sidebar.info("⚠️ Please select at least one slab size")
-
-# Add utility buttons
-col1, col2 = st.sidebar.columns(2)
-if col1.button("Select All", help="Select all available slab sizes"):
-    st.session_state.selected_slabs = def_slabs.copy()
-    st.rerun()
-
-if col2.button("Clear All", help="Clear all selected slabs"):
-    st.session_state.selected_slabs = []
-    st.rerun()
 
 st.sidebar.markdown("---")
 
