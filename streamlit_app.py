@@ -154,7 +154,7 @@ st.markdown("""
     
     /* Consistent spacing for input fields */
     .stSidebar .stNumberInput {
-        margin-bottom: 114rem;
+        margin-bottom: 1rem;
     }
     .stSidebar .stSelectbox {
         margin-bottom: 0.4rem;
