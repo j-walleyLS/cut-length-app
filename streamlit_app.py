@@ -143,31 +143,34 @@ st.markdown("""
     .stSidebar .element-container:first-child {
         margin-top: -2rem;
     }
-    .stSidebar .stMarkdown h3 {
-        margin-top: 0rem !important;
-        padding-top: 0rem !important;
-        margin-bottom: 1rem !important;
-    }
     
-    /* Reduce spacing in sidebar */
+    /* Consistent spacing for all sidebar elements */
     .stSidebar .stMarkdown {
+        margin-bottom: 0.75rem;
+    }
+    .stSidebar .stButton {
         margin-bottom: 0.5rem;
     }
-    .stSidebar .stTextInput {
-        margin-bottom: 0.25rem;
-    }
-    
-    /* Tighter spacing for slab buttons */
-    .stSidebar .stButton {
-        margin-bottom: 0.1rem;
-    }
-    
-    /* Even spacing for input rows */
     .stSidebar .stNumberInput {
         margin-bottom: 0.5rem;
     }
     .stSidebar .stSelectbox {
         margin-bottom: 0.5rem;
+    }
+    .stSidebar .stTextInput {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Headers get same spacing as between sections */
+    .stSidebar .stMarkdown h3 {
+        margin-top: 0rem !important;
+        padding-top: 0rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    /* Subheaders get same spacing */
+    .stSidebar .stMarkdown h2 {
+        margin-bottom: 0.75rem !important;
     }
     
     /* Change button colors - primary buttons (green) */
@@ -315,6 +318,7 @@ slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
 # -----------------------------
 st.sidebar.markdown("---")
 st.sidebar.header("📦 Finished Units")
+st.sidebar.markdown("")  # Add consistent gap after header
 
 # Initialize edit mode and unit input fields in session state
 if "edit_mode" not in st.session_state:
