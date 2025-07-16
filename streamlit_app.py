@@ -148,6 +148,23 @@ st.markdown("""
         padding-top: 0rem !important;
     }
     
+    /* Reduce spacing in sidebar */
+    .stSidebar .stMarkdown {
+        margin-bottom: 0.5rem;
+    }
+    .stSidebar .stButton {
+        margin-bottom: 0.25rem;
+    }
+    .stSidebar .stNumberInput {
+        margin-bottom: 0.25rem;
+    }
+    .stSidebar .stSelectbox {
+        margin-bottom: 0.25rem;
+    }
+    .stSidebar .stTextInput {
+        margin-bottom: 0.25rem;
+    }
+    
     /* Change button colors from red to green */
     .stButton > button[kind="primary"] {
         background-color: #28a745;
