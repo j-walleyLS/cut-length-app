@@ -156,6 +156,18 @@ st.markdown("""
         margin-bottom: 0.05rem !important;
     }
     
+    /* INPUT ROWS - Give them same small spacing */
+    input[data-testid*="width_input_"],
+    input[data-testid*="height_input_"],
+    input[data-testid*="quantity_input_"] {
+        margin-bottom: 0.05rem !important;
+    }
+    
+    /* DROPDOWN ROWS - Give them same small spacing */
+    div[data-testid*="forced_input_"] {
+        margin-bottom: 0.05rem !important;
+    }
+    
     /* Remove default spacing from other elements */
     .stSidebar .stNumberInput,
     .stSidebar .stSelectbox,
@@ -351,8 +363,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
                 rows_to_remove.append(row_idx)
     
-    # Add same spacing as slab buttons between rows
-    st.sidebar.markdown("<div style='height: 0.2rem;'></div>", unsafe_allow_html=True)
+    # Remove the manual spacing div since CSS handles it now
     
     st.session_state.unit_input_rows[row_idx] = {
         "width": width,
