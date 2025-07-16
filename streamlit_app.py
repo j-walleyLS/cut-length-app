@@ -144,7 +144,7 @@ st.markdown("""
         margin-top: -2rem;
     }
     
-    /* Consistent spacing for all sidebar elements */
+    /* Default spacing for sidebar elements */
     .stSidebar .stMarkdown {
         margin-bottom: 0.75rem;
     }
@@ -152,27 +152,27 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     
-    /* Consistent spacing for input fields */
-    .stSidebar .stNumberInput {
-        margin-bottom: 1.5rem;
-    }
-    .stSidebar .stSelectbox {
-        margin-bottom: 0.4rem;
+    /* Specific spacing for different button groups */
+    .stSidebar .stButton {
+        margin-bottom: 0.3rem; /* Tight spacing for slab buttons */
     }
     
-    /* Tighter spacing for slab buttons */
-    .stSidebar .stButton {
-        margin-bottom: 1.5rem;
+    /* Specific spacing for input fields in unit rows */
+    .stSidebar .stNumberInput {
+        margin-bottom: 0.4rem; /* Consistent row spacing */
+    }
+    .stSidebar .stSelectbox {
+        margin-bottom: 0.4rem; /* Match number inputs */
     }
     
     /* Larger gaps for main headers */
     .stSidebar .stMarkdown h3 {
         margin-top: 0rem !important;
         padding-top: 0rem !important;
-        margin-bottom: 2rem !important;
+        margin-bottom: 1.2rem !important;
     }
     
-    /* Larger gaps for section headers */
+    /* Section headers */
     .stSidebar .stMarkdown h2 {
         margin-bottom: 1.2rem !important;
     }
