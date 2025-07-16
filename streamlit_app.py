@@ -256,11 +256,19 @@ slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
 st.sidebar.markdown("---")
 st.sidebar.header("📦 Finished Units")
 
-# Initialize edit mode and unit rows in session state
+# Initialize edit mode and unit input fields in session state
 if "edit_mode" not in st.session_state:
     st.session_state.edit_mode = False
 if "unit_rows" not in st.session_state:
     st.session_state.unit_rows = []
+if "unit_width" not in st.session_state:
+    st.session_state.unit_width = 300
+if "unit_height" not in st.session_state:
+    st.session_state.unit_height = 200
+if "unit_quantity" not in st.session_state:
+    st.session_state.unit_quantity = 1
+if "unit_forced" not in st.session_state:
+    st.session_state.unit_forced = []
 
 st.sidebar.markdown("**Units:**")
 
