@@ -152,27 +152,43 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     
-    /* Specific spacing for different button groups */
-    .stSidebar .stButton {
-        margin-bottom: 0.3rem; /* Tight spacing for slab buttons */
+    /* INDEPENDENT SPACING - Slab buttons only (first section) */
+    .stSidebar > div > div:nth-child(3) .stButton {
+        margin-bottom: 0.2rem; /* Tight spacing for slab buttons */
     }
     
-    /* Specific spacing for input fields in unit rows */
-    .stSidebar .stNumberInput {
-        margin-bottom: 0.4rem; /* Consistent row spacing */
-    }
-    .stSidebar .stSelectbox {
-        margin-bottom: 0.4rem; /* Match number inputs */
+    /* INDEPENDENT SPACING - Custom slab remove buttons */
+    .stSidebar .stColumns .stButton {
+        margin-bottom: 0.3rem; /* Custom slab × buttons */
     }
     
-    /* Larger gaps for main headers */
+    /* INDEPENDENT SPACING - Add Unit, Update List, Clear All buttons */
+    .stSidebar > div > div:nth-child(5) .stButton {
+        margin-bottom: 0.6rem; /* Unit management buttons */
+    }
+    
+    /* INDEPENDENT SPACING - Unit input fields (Width, Height, Qty) */
+    .stSidebar .stColumns .stNumberInput {
+        margin-bottom: 0.4rem; /* Unit input row spacing */
+    }
+    
+    /* INDEPENDENT SPACING - Force Cutting From dropdowns */
+    .stSidebar .stColumns .stSelectbox {
+        margin-bottom: 0.4rem; /* Match unit input spacing */
+    }
+    
+    /* INDEPENDENT SPACING - Custom slab input field */
+    .stSidebar > div > div:nth-child(4) .stTextInput {
+        margin-bottom: 0.5rem; /* Custom slab text input */
+    }
+    
+    /* Headers spacing */
     .stSidebar .stMarkdown h3 {
         margin-top: 0rem !important;
         padding-top: 0rem !important;
-        margin-bottom: 1.2rem !important;
+        margin-bottom: 1.2rem !important; /* Header spacing */
     }
     
-    /* Section headers */
     .stSidebar .stMarkdown h2 {
         margin-bottom: 1.2rem !important;
     }
