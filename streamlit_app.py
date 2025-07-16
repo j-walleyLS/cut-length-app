@@ -156,16 +156,16 @@ st.markdown("""
         margin-bottom: 0.1rem !important;
     }
     
-    /* INPUT ROWS - Give them double spacing */
+    /* INPUT ROWS - Give them larger spacing */
     input[data-testid*="width_input_"],
     input[data-testid*="height_input_"],
     input[data-testid*="quantity_input_"] {
-        margin-bottom: 0.2rem !important;
+        margin-bottom: 1.5rem !important;
     }
     
-    /* DROPDOWN ROWS - Give them double spacing */
+    /* DROPDOWN ROWS - Give them larger spacing */
     div[data-testid*="forced_input_"] {
-        margin-bottom: 0.2rem !important;
+        margin-bottom: 1.5rem !important;
     }
     
     /* Remove default spacing from other elements */
