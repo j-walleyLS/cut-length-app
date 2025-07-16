@@ -131,6 +131,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS to remove sidebar spacing
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 1rem;
+    }
+    .stSidebar > div:first-child {
+        padding-top: 0rem;
+    }
+    .stSidebar .stMarkdown:first-child {
+        margin-top: -1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 if "units" not in st.session_state:
     st.session_state.units = []
@@ -150,7 +165,7 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 # -----------------------------
 # Sidebar - Slab Selection
 # -----------------------------
-st.sidebar.header("📐 Available Slab Sizes")
+st.sidebar.markdown("### 📐 Available Slab Sizes")
 
 # Define all available slab sizes in specific column order
 col1_slabs = [(600, 600), (900, 700), (900, 500), (2000, 500)]
