@@ -269,14 +269,6 @@ if "unit_forced" not in st.session_state:
 
 st.sidebar.markdown("**Units:**")
 
-# Show existing units as simple list when not in edit mode
-if not st.session_state.edit_mode and st.session_state.units:
-    for unit in st.session_state.units:
-        forced_text = ""
-        if unit['forced_slabs']:
-            forced_text = f" → {unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
-        st.sidebar.markdown(f"• {unit['quantity']}× {unit['width']}×{unit['height']}mm{forced_text}")
-
 # Show input rows for adding/editing units
 rows_to_remove = []
 for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
@@ -315,7 +307,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         if row_idx == 0:
             st.markdown("<div style='height: 36px;'></div>", unsafe_allow_html=True)  # Space for label
         
-        if len(st.session_state.unit_input_rows) > 1:  # Only show remove if more than one row
+        if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:  # Always show remove except for single first row
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
                 rows_to_remove.append(row_idx)
     
@@ -363,7 +355,7 @@ if col1.button("➕ Add Unit", type="primary", use_container_width=True):
     st.session_state.unit_input_rows.append({"width": 300, "height": 200, "quantity": 1, "forced": "Any"})
     st.rerun()
 
-# Update list button - consolidates units and reforms the list
+# Update list button - consolidates units and keeps input fields
 if col2.button("📝 Update List", type="secondary", use_container_width=True):
     # Create consolidated units from all input rows
     consolidated_units = {}
@@ -403,11 +395,10 @@ if col2.button("📝 Update List", type="secondary", use_container_width=True):
             "order": i
         })
     
-    # Reset input rows to single empty row
-    st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
+    # Keep the input rows as they are (don't reset them)
     st.rerun()
 
-# Show the current units list between buttons and clear all
+# Show the current units list
 if st.session_state.units:
     st.sidebar.markdown("**Current Units:**")
     for unit in st.session_state.units:
