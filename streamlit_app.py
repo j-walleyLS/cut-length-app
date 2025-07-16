@@ -352,7 +352,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
                 rows_to_remove.append(row_idx)
     
     # Add same spacing as slab buttons between rows
-    st.sidebar.markdown("<div style='height: 10rem;'></div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     
     st.session_state.unit_input_rows[row_idx] = {
         "width": width,
@@ -369,7 +369,7 @@ if rows_to_remove:
     st.rerun()
 
 # Buttons with same spacing as input rows
-st.sidebar.markdown("<div style='height: 10rem;'></div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
 
 col1, col2 = st.sidebar.columns(2)
 
