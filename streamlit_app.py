@@ -490,14 +490,12 @@ if slab_sizes and st.session_state.units:
         
         # Detailed results for each slab size
         for result in slab_outputs:
-            with st.expander(f"🔍 **{result['slab']}mm Slab Details** ({result['slab_count']} slab(s) needed)", expanded=True):
+            with st.expander(f"## {result['slab_count']}no. **{result['slab']}mm Slab**", expanded=True):
                 
-                # Metrics for this slab size
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Units Placed", sum(result['units'].values()))
-                col2.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
-                col3.metric("Efficiency", f"{result['efficiency']:.1f}%")
-                col4.metric("Waste Area", f"{result['waste_area'] / 1e6:.3f} m²")
+                # Metrics for this slab size - only show cut length and total area
+                col1, col2 = st.columns(2)
+                col1.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
+                col2.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
                 
                 # Bill of quantities for this slab
                 st.markdown("**Units Produced:**")
@@ -505,7 +503,7 @@ if slab_sizes and st.session_state.units:
                 for order in sorted(result["units"]):
                     u = next(u for u in st.session_state.units if u["order"] == order)
                     qty = result['units'][order]
-                    boq_data.append(f"• {qty}× {u['width']}×{u['height']}mm")
+                    boq_data.append(f"• {qty}no. {u['width']}×{u['height']}mm")
                     global_boqlines[(u['width'], u['height'])] = global_boqlines.get((u['width'], u['height']), 0) + qty
                 
                 st.markdown("\n".join(boq_data))
@@ -517,7 +515,7 @@ if slab_sizes and st.session_state.units:
             st.markdown("**Total units to be produced:**")
             
             for (w, h), qty in sorted(global_boqlines.items()):
-                st.markdown(f"• **{qty}×** {w}×{h}mm")
+                st.markdown(f"• **{qty}no.** {w}×{h}mm")
         
         # Check for units that couldn't be produced
         produced_units = {}
@@ -540,7 +538,7 @@ if slab_sizes and st.session_state.units:
             for item in unproduced:
                 u = item["unit"]
                 missing = item["missing"]
-                st.markdown(f"• **{missing}×** {u['width']}×{u['height']}mm (too large for selected slabs)")
+                st.markdown(f"• **{missing}no.** {u['width']}×{u['height']}mm (too large for selected slabs)")
     
     else:
         st.warning("⚠️ No units could be produced with the selected slab sizes. Please check your unit dimensions and slab selections.")
