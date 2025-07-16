@@ -149,7 +149,7 @@ st.markdown("""
         margin-bottom: 0.75rem;
     }
     .stSidebar .stTextInput {
-        margin-bottom: 0.5rem;
+        margin-bottom: 15rem;
     }
     
     /* Consistent spacing for input fields */
