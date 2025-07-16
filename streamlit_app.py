@@ -178,16 +178,17 @@ st.markdown("""
     /* INDEPENDENT SPACING - Add Unit, Update List, Clear All buttons */
     .stSidebar > div > div:nth-child(5) .stButton {
         margin-bottom: 0.6rem; /* Unit management buttons */
+        margin-top: 0.75rem; /* Match spacing from input rows */
     }
     
     /* INDEPENDENT SPACING - Unit input fields (Width, Height, Qty) */
     .stSidebar .stColumns .stNumberInput {
-        margin-bottom: 3rem; /* Increased gap between unit input rows */
+        margin-bottom: 0.75rem; /* Consistent spacing between input rows */
     }
     
     /* INDEPENDENT SPACING - Force Cutting From dropdowns */
     .stSidebar .stColumns .stSelectbox {
-        margin-bottom: 3rem; /* Match unit input spacing */
+        margin-bottom: 0.75rem; /* Match input field spacing */
     }
     
     /* INDEPENDENT SPACING - Custom slab input field */
