@@ -131,7 +131,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS to remove sidebar spacing and change button colors
+# Clean CSS with proper spacing control
 st.markdown("""
 <style>
     .block-container {
@@ -144,70 +144,29 @@ st.markdown("""
         margin-top: -2rem;
     }
     
-    /* Default spacing for sidebar elements */
-    .stSidebar .stMarkdown {
-        margin-bottom: 0.75rem;
-    }
-    .stSidebar .stTextInput {
-        margin-bottom: 0.5rem;
-    }
-    
-    /* INDEPENDENT SPACING - Slab buttons only (first section) */
-    .stSidebar > div > div:nth-child(3) .stButton {
-        margin-bottom: 0.2rem; /* Tight spacing for slab buttons */
-    }
-    
-    /* INDEPENDENT SPACING - Custom slab remove buttons */
-    .stSidebar .stColumns .stButton {
-        margin-bottom: 0.3rem; /* Custom slab × buttons */
-    }
-    
-    /* INDEPENDENT SPACING - Gap before horizontal separator (after custom slabs) */
-    .stSidebar > div > div:nth-child(4) {
-        margin-bottom: 0rem; /* No space before horizontal separator */
-    }
-    
-    /* INDEPENDENT SPACING - Remove all space around horizontal dividers */
-    .stSidebar hr {
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-    }
-    
-    /* INDEPENDENT SPACING - Add Unit, Update List, Clear All buttons */
-    .stSidebar > div > div:nth-child(5) .stButton {
-        margin-bottom: 0.6rem; /* Unit management buttons */
-        margin-top: 0.75rem; /* Match spacing from input rows */
-    }
-    
-    /* INDEPENDENT SPACING - Unit input fields (Width, Height, Qty) */
-    .stSidebar .stColumns .stNumberInput {
-        margin-bottom: 0.75rem; /* Consistent spacing between input rows */
-    }
-    
-    /* INDEPENDENT SPACING - Force Cutting From dropdowns */
-    .stSidebar .stColumns .stSelectbox {
-        margin-bottom: 0.75rem; /* Match input field spacing */
-    }
-    
-    /* INDEPENDENT SPACING - Custom slab input field */
-    .stSidebar > div > div:nth-child(4) .stTextInput {
-        margin-bottom: 0.5rem; /* Custom slab text input */
-    }
-    
-    /* Headers spacing */
+    /* Headers */
     .stSidebar .stMarkdown h3 {
         margin-top: 0rem !important;
         padding-top: 0rem !important;
-        margin-bottom: 1.2rem !important; /* Header spacing */
-    }
-    
-    .stSidebar .stMarkdown h2 {
         margin-bottom: 1.2rem !important;
     }
     
-    /* Change button colors - primary buttons (green) */
+    /* Remove default spacing from ALL sidebar elements */
+    .stSidebar .stButton,
+    .stSidebar .stNumberInput,
+    .stSidebar .stSelectbox,
+    .stSidebar .stTextInput,
+    .stSidebar .stMarkdown {
+        margin-bottom: 0rem !important;
+    }
+    
+    /* Remove spacing around horizontal dividers */
+    .stSidebar hr {
+        margin: 0rem !important;
+        padding: 0rem !important;
+    }
+    
+    /* Button colors */
     .stButton > button[kind="primary"] {
         background-color: #28a745;
         border-color: #28a745;
@@ -217,29 +176,18 @@ st.markdown("""
         background-color: #218838;
         border-color: #1e7e34;
     }
-    .stButton > button[kind="primary"]:focus {
-        background-color: #218838;
-        border-color: #1e7e34;
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
-    }
-    
-    /* Make selected slab buttons green too */
-    .stButton > button[kind="primary"]:active {
-        background-color: #1e7e34;
-        border-color: #1c7430;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # Initialize session state
 if "units" not in st.session_state:
     st.session_state.units = []
-
 if "custom_slabs" not in st.session_state:
     st.session_state.custom_slabs = []
-
 if "selected_slabs" not in st.session_state:
     st.session_state.selected_slabs = []
+if "unit_input_rows" not in st.session_state:
+    st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
 
 # -----------------------------
 # Main UI
@@ -252,14 +200,13 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 # -----------------------------
 st.sidebar.markdown("### 📐 Available Slab Sizes")
 
-# Define all available slab sizes in specific column order
+# Define slab sizes in specific order
 col1_slabs = [(600, 600), (900, 700), (900, 500), (2000, 500)]
 col2_slabs = [(900, 600), (1800, 700), (1500, 500)]
 
-# Create a responsive grid layout for slab selection
+# Create slab buttons with manual spacing
 col1, col2 = st.sidebar.columns(2)
 
-# Column 1 slabs
 for slab in col1_slabs:
     slab_key = f"{slab[0]}×{slab[1]}"
     is_selected = slab in st.session_state.selected_slabs
@@ -276,8 +223,10 @@ for slab in col1_slabs:
         else:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
+    
+    # Add small gap after each slab button
+    col1.markdown("<div style='height: 0.2rem;'></div>", unsafe_allow_html=True)
 
-# Column 2 slabs
 for slab in col2_slabs:
     slab_key = f"{slab[0]}×{slab[1]}"
     is_selected = slab in st.session_state.selected_slabs
@@ -294,23 +243,16 @@ for slab in col2_slabs:
         else:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
-
-# Add CSS to target slab buttons specifically
-st.markdown("""
-<style>
-    /* Target slab buttons by their key pattern */
-    .stSidebar button[data-testid*="slab_"] {
-        margin-bottom: 150rem !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+    
+    # Add small gap after each slab button
+    col2.markdown("<div style='height: 0.2rem;'></div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 
-# Custom slab input with improved UI
+# Custom slab input
 st.sidebar.subheader("Custom Slab Sizes")
+st.sidebar.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
 
-# Initialize custom input in session state
 if "custom_input" not in st.session_state:
     st.session_state.custom_input = ""
 
@@ -322,7 +264,7 @@ custom_input = st.sidebar.text_input(
     key="custom_slab_input"
 )
 
-# Process single custom slab input
+# Process custom slab input
 if custom_input != st.session_state.custom_input:
     st.session_state.custom_input = custom_input
     
@@ -331,61 +273,49 @@ if custom_input != st.session_state.custom_input:
             new_slab = parse_dimensions(custom_input)
             if new_slab not in st.session_state.custom_slabs:
                 st.session_state.custom_slabs.append(new_slab)
-                # Clear the input by resetting the key
                 st.session_state.custom_input = ""
                 st.rerun()
         except Exception as e:
             st.sidebar.error("❌ Invalid format. Use: 800x400")
 
-# Display custom slabs list
+# Display custom slabs
 if st.session_state.custom_slabs:
+    st.sidebar.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
     st.sidebar.markdown("**Custom Slabs:**")
-    st.sidebar.markdown("")  # Add space line before first entry
+    st.sidebar.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
+    
     custom_slabs_to_remove = []
     for i, slab in enumerate(st.session_state.custom_slabs):
         col1, col2 = st.sidebar.columns([0.3, 2.7])
         if col1.button("×", key=f"remove_custom_{i}_{slab[0]}_{slab[1]}", help="Remove this custom slab"):
             custom_slabs_to_remove.append(i)
         col2.markdown(f"<div style='text-align: left; padding-top: 8px;'>{slab[0]}×{slab[1]}mm</div>", unsafe_allow_html=True)
+        # Add small gap after each custom slab
+        st.sidebar.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
     
-    # Remove custom slabs (in reverse order) - avoid rerun in loop
     if custom_slabs_to_remove:
         for i in reversed(custom_slabs_to_remove):
             if i < len(st.session_state.custom_slabs):
                 del st.session_state.custom_slabs[i]
         st.rerun()
 
-# Combine selected default slabs with custom slabs
+# Combine slabs
 slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
+
+st.sidebar.markdown("---")
 
 # -----------------------------
 # Sidebar - Unit Input
 # -----------------------------
-st.sidebar.markdown("---")
 st.sidebar.header("📦 Finished Units")
-st.sidebar.markdown("")  # Add larger gap after header
+st.sidebar.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
-# Initialize edit mode and unit input fields in session state
-if "edit_mode" not in st.session_state:
-    st.session_state.edit_mode = False
-if "unit_input_rows" not in st.session_state:
-    st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
-if "unit_width" not in st.session_state:
-    st.session_state.unit_width = 300
-if "unit_height" not in st.session_state:
-    st.session_state.unit_height = 200
-if "unit_quantity" not in st.session_state:
-    st.session_state.unit_quantity = 1
-if "unit_forced" not in st.session_state:
-    st.session_state.unit_forced = []
-
-# Show input rows for adding/editing units
+# Show input rows
 rows_to_remove = []
 for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     col1, col2, col3, col4, col5 = st.sidebar.columns([1, 1, 0.7, 1.5, 0.4])
     
     with col1:
-        # Only show label on first row
         label_vis = "visible" if row_idx == 0 else "collapsed"
         width = st.number_input("Width", min_value=1, value=row_data["width"], step=1, key=f"width_input_{row_idx}", label_visibility=label_vis)
     
@@ -413,19 +343,16 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         )
     
     with col5:
-        # Center the remove button vertically on all rows
         if row_idx == 0:
-            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)  # Better centering for top row
+            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
         
-        if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:  # Always show remove except for single first row
+        if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
                 rows_to_remove.append(row_idx)
     
-    # Add spacing between rows using markdown
-    if row_idx < len(st.session_state.unit_input_rows) - 1:  # Don't add space after last row
-        st.sidebar.markdown("<div style='margin-bottom: 3rem;'></div>", unsafe_allow_html=True)
+    # Add same spacing as slab buttons between rows
+    st.sidebar.markdown("<div style='height: 0.2rem;'></div>", unsafe_allow_html=True)
     
-    # Update row data
     st.session_state.unit_input_rows[row_idx] = {
         "width": width,
         "height": height,
@@ -433,47 +360,27 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         "forced": forced
     }
 
-# Remove rows (in reverse order) - avoid rerun in loop
+# Remove rows
 if rows_to_remove:
     for row_idx in reversed(rows_to_remove):
         if row_idx < len(st.session_state.unit_input_rows):
             del st.session_state.unit_input_rows[row_idx]
     st.rerun()
 
-# Add 1rem spacing before buttons
-st.sidebar.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
+# Buttons with same spacing as input rows
+st.sidebar.markdown("<div style='height: 0.2rem;'></div>", unsafe_allow_html=True)
 
-# Buttons row
 col1, col2 = st.sidebar.columns(2)
 
-# Add unit button - adds the current rows to units and creates a new input row
 if col1.button("➕ Add Unit", type="primary", use_container_width=True):
-    # Add all filled rows to units
-    for row_data in st.session_state.unit_input_rows:
-        if row_data["width"] and row_data["height"] and row_data["quantity"]:
-            # Process forced slab selection
-            forced_slabs = []
-            if row_data["forced"] and row_data["forced"] != "Any":
-                for slab in slab_sizes:
-                    if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
-                        forced_slabs = [slab]
-                        break
-            
-            # Add the unit to a temporary list (don't update main units list yet)
-            # This will be processed when Update List is clicked
-    
-    # Add a new empty row for next input
     st.session_state.unit_input_rows.append({"width": 300, "height": 200, "quantity": 1, "forced": "Any"})
     st.rerun()
 
-# Update list button - consolidates units and keeps input fields
 if col2.button("📝 Update List", type="secondary", use_container_width=True):
-    # Create consolidated units from all input rows
     consolidated_units = {}
     
     for row_data in st.session_state.unit_input_rows:
         if row_data["width"] and row_data["height"] and row_data["quantity"]:
-            # Process forced slab selection
             forced_slabs = []
             if row_data["forced"] and row_data["forced"] != "Any":
                 for slab in slab_sizes:
@@ -481,7 +388,6 @@ if col2.button("📝 Update List", type="secondary", use_container_width=True):
                         forced_slabs = [slab]
                         break
             
-            # Create key for consolidation (width, height, forced_slab)
             forced_key = tuple(forced_slabs[0]) if forced_slabs else None
             unit_key = (row_data["width"], row_data["height"], forced_key)
             
@@ -495,7 +401,6 @@ if col2.button("📝 Update List", type="secondary", use_container_width=True):
                     "forced_slabs": forced_slabs
                 }
     
-    # Replace units list with consolidated units
     st.session_state.units = []
     for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
         st.session_state.units.append({
@@ -506,11 +411,11 @@ if col2.button("📝 Update List", type="secondary", use_container_width=True):
             "order": i
         })
     
-    # Keep the input rows as they are (don't reset them)
     st.rerun()
 
-# Show the current units list
+# Show current units
 if st.session_state.units:
+    st.sidebar.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
     st.sidebar.markdown("**Current Units:**")
     for unit in st.session_state.units:
         forced_text = ""
@@ -520,10 +425,10 @@ if st.session_state.units:
 
 # Clear all button
 if st.session_state.units:
+    st.sidebar.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
     if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
         st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
-        st.session_state.edit_mode = False
         st.rerun()
 
 # -----------------------------
@@ -532,7 +437,6 @@ if st.session_state.units:
 if slab_sizes and st.session_state.units:
     st.header("📊 Optimization Results")
     
-    # Add a progress indicator
     with st.spinner("Optimizing cut layouts..."):
         global_boqlines = {}
         slab_outputs = []
@@ -566,7 +470,7 @@ if slab_sizes and st.session_state.units:
                 
                 cut_length += best["cost"]
             
-            if produced:  # Only add if something was actually produced
+            if produced:
                 area = sum(u["width"] * u["height"] * qty for u in st.session_state.units for order, qty in produced.items() if u["order"] == order)
                 waste_area = (sw * sh * slab_count) - area
                 efficiency = (area / (sw * sh * slab_count)) * 100 if slab_count > 0 else 0
@@ -582,7 +486,6 @@ if slab_sizes and st.session_state.units:
                     "slab_count": slab_count
                 })
     
-    # Display results in a more organized way
     if slab_outputs:
         # Summary metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -599,16 +502,13 @@ if slab_sizes and st.session_state.units:
         
         st.markdown("---")
         
-        # Detailed results for each slab size
+        # Detailed results
         for result in slab_outputs:
             with st.expander(f"## {result['slab_count']}no. **{result['slab']}mm Slab**", expanded=True):
-                
-                # Metrics for this slab size - only show cut length and total area
                 col1, col2 = st.columns(2)
                 col1.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 col2.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
                 
-                # Bill of quantities for this slab
                 st.markdown("**Units Produced:**")
                 boq_data = []
                 for order in sorted(result["units"]):
@@ -628,7 +528,7 @@ if slab_sizes and st.session_state.units:
             for (w, h), qty in sorted(global_boqlines.items()):
                 st.markdown(f"• **{qty}no.** {w}×{h}mm")
         
-        # Check for units that couldn't be produced
+        # Check for unproduced units
         produced_units = {}
         for result in slab_outputs:
             for order, qty in result["units"].items():
