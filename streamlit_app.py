@@ -154,7 +154,7 @@ st.markdown("""
     
     /* INDEPENDENT SPACING - Slab buttons only (first section) */
     .stSidebar > div > div:nth-child(3) .stButton {
-        margin-bottom: 1.5rem; /* Tight spacing for slab buttons */
+        margin-bottom: 15rem; /* Tight spacing for slab buttons */
     }
     
     /* INDEPENDENT SPACING - Custom slab remove buttons */
