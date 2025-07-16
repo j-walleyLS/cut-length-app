@@ -151,13 +151,18 @@ st.markdown("""
         margin-bottom: 1.2rem !important;
     }
     
-    /* Remove default spacing from ALL sidebar elements */
+    /* Remove default spacing from ALL sidebar elements EXCEPT our custom spacing divs */
     .stSidebar .stButton,
     .stSidebar .stNumberInput,
     .stSidebar .stSelectbox,
-    .stSidebar .stTextInput,
-    .stSidebar .stMarkdown {
+    .stSidebar .stTextInput {
         margin-bottom: 0rem !important;
+    }
+    
+    /* Allow our custom spacing divs to work */
+    .stSidebar .stMarkdown div[style*="height: 0.05rem"] {
+        margin-bottom: 0.05rem !important;
+        height: 0.05rem !important;
     }
     
     /* Remove spacing around horizontal dividers */
