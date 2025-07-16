@@ -133,15 +133,16 @@ if "units" not in st.session_state:
 if "custom_slabs" not in st.session_state:
     st.session_state.custom_slabs = []
 
-st.sidebar.header("Slab Sizes")
-def_slabs = [(900, 600), (600, 600), (1800, 700)]
+st.sidebar.header("Available Slab Sizes")
+def_slabs = [(900, 600), (600, 600), (1800, 700), (900, 500), (1500, 500), (900, 700)]
 
 def_slabs_selected = []
-for slab in def_slabs:
-    if st.sidebar.button(f"Use {slab[0]}x{slab[1]} mm", key=f"slab_{slab}"):
-        if slab not in def_slabs_selected:
-            def_slabs_selected.append(slab)
+cols = st.sidebar.columns(3)
+for i, slab in enumerate(def_slabs):
+    if cols[i % 3].button(f"{slab[0]}x{slab[1]}", key=f"slab_{slab}"):
+        def_slabs_selected.append(slab)
 
+st.sidebar.markdown("---")
 custom_input = st.sidebar.text_input("Custom Slab Sizes (e.g. 800x400,1000x500)")
 
 if custom_input:
