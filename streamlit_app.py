@@ -154,7 +154,7 @@ st.markdown("""
     
     /* INDEPENDENT SPACING - Slab buttons only (first section) */
     .stSidebar > div > div:nth-child(3) .stButton {
-        margin-bottom: 1.5rem; /* Tight spacing for slab buttons */
+        margin-bottom: 0.2rem; /* Tight spacing for slab buttons */
     }
     
     /* INDEPENDENT SPACING - Custom slab remove buttons */
@@ -182,12 +182,12 @@ st.markdown("""
     
     /* INDEPENDENT SPACING - Unit input fields (Width, Height, Qty) */
     .stSidebar .stColumns .stNumberInput {
-        margin-bottom: 0.4rem; /* Unit input row spacing */
+        margin-bottom: 1.5rem; /* Increased gap between unit input rows */
     }
     
     /* INDEPENDENT SPACING - Force Cutting From dropdowns */
     .stSidebar .stColumns .stSelectbox {
-        margin-bottom: 0.4rem; /* Match unit input spacing */
+        margin-bottom: 1.5rem; /* Match unit input spacing */
     }
     
     /* INDEPENDENT SPACING - Custom slab input field */
@@ -412,9 +412,9 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         )
     
     with col5:
-        # Add padding to align with input fields only on first row
+        # Center the remove button vertically on all rows
         if row_idx == 0:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)  # Space for label
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)  # Reduced padding for better centering
         
         if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:  # Always show remove except for single first row
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
