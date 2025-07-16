@@ -169,7 +169,7 @@ st.markdown("""
     .stSidebar .stMarkdown h3 {
         margin-top: 0rem !important;
         padding-top: 0rem !important;
-        margin-bottom: 1.2rem !important;
+        margin-bottom: 12rem !important;
     }
     
     /* Larger gaps for section headers */
