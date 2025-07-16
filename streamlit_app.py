@@ -195,14 +195,7 @@ for slab in col2_slabs:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
 
-# Show currently selected slabs with better formatting
-if st.session_state.selected_slabs:
-    st.sidebar.success(f"**{len(st.session_state.selected_slabs)} slab size(s) selected**")
-    with st.sidebar.expander("View Selected Slabs", expanded=False):
-        for slab in sorted(st.session_state.selected_slabs, key=lambda x: (x[0], x[1])):
-            st.markdown(f"• {slab[0]}×{slab[1]}mm")
-else:
-    st.sidebar.info("⚠️ Please select at least one slab size")
+
 
 st.sidebar.markdown("---")
 
@@ -221,6 +214,16 @@ if custom_input:
             st.sidebar.success(f"✓ {len(st.session_state.custom_slabs)} custom slab(s) added")
     except:
         st.sidebar.error("❌ Invalid format. Use: 800x400, 1000x500")
+
+# Display custom slabs list
+if st.session_state.custom_slabs:
+    st.sidebar.markdown("**Custom Slabs:**")
+    for i, slab in enumerate(st.session_state.custom_slabs):
+        col1, col2 = st.sidebar.columns([3, 1])
+        col1.markdown(f"• {slab[0]}×{slab[1]}mm")
+        if col2.button("×", key=f"remove_custom_{i}", help="Remove this custom slab"):
+            st.session_state.custom_slabs.pop(i)
+            st.rerun()
 
 # Combine selected default slabs with custom slabs
 slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
