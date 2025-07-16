@@ -131,6 +131,40 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS to remove sidebar spacing and change button colors
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 1rem;
+    }
+    .stSidebar > div:first-child {
+        padding-top: 0rem;
+    }
+    .stSidebar .element-container:first-child {
+        margin-top: -2rem;
+    }
+    .stSidebar .stMarkdown h3 {
+        margin-top: 0rem !important;
+        padding-top: 0rem !important;
+    }
+    
+    /* Change button colors from red to green */
+    .stButton > button[kind="primary"] {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+    .stButton > button[kind="primary"]:focus {
+        background-color: #218838;
+        border-color: #1e7e34;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 if "units" not in st.session_state:
     st.session_state.units = []
@@ -150,7 +184,7 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 # -----------------------------
 # Sidebar - Slab Selection
 # -----------------------------
-st.sidebar.header("📐 Available Slab Sizes")
+st.sidebar.markdown("### 📐 Available Slab Sizes")
 
 # Define all available slab sizes in specific column order
 col1_slabs = [(600, 600), (900, 700), (900, 500), (2000, 500)]
@@ -195,8 +229,6 @@ for slab in col2_slabs:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
 
-
-
 st.sidebar.markdown("---")
 
 # Custom slab input with improved UI
@@ -239,9 +271,11 @@ if st.session_state.custom_slabs:
             custom_slabs_to_remove.append(i)
         col2.markdown(f"<div style='text-align: left; padding-top: 8px;'>{slab[0]}×{slab[1]}mm</div>", unsafe_allow_html=True)
     
-    # Remove custom slabs (in reverse order to maintain indices)
-    for i in reversed(custom_slabs_to_remove):
-        del st.session_state.custom_slabs[i]
+    # Remove custom slabs (in reverse order) - avoid rerun in loop
+    if custom_slabs_to_remove:
+        for i in reversed(custom_slabs_to_remove):
+            if i < len(st.session_state.custom_slabs):
+                del st.session_state.custom_slabs[i]
         st.rerun()
 
 # Combine selected default slabs with custom slabs
@@ -405,7 +439,7 @@ if st.session_state.units:
         forced_text = ""
         if unit['forced_slabs']:
             forced_text = f" → {unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
-        st.sidebar.markdown(f"• {unit['quantity']}× {unit['width']}×{unit['height']}mm{forced_text}")
+        st.sidebar.markdown(f"• {unit['quantity']}no. {unit['width']}×{unit['height']}mm{forced_text}")
 
 # Clear all button
 if st.session_state.units:
