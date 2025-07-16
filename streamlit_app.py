@@ -422,7 +422,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     
     # Add spacing between rows using markdown
     if row_idx < len(st.session_state.unit_input_rows) - 1:  # Don't add space after last row
-        st.sidebar.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
+        st.sidebar.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
     
     # Update row data
     st.session_state.unit_input_rows[row_idx] = {
