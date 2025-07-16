@@ -237,10 +237,10 @@ if st.session_state.custom_slabs:
     st.sidebar.markdown("**Custom Slabs:**")
     custom_slabs_to_remove = []
     for i, slab in enumerate(st.session_state.custom_slabs):
-        col1, col2 = st.sidebar.columns([3, 1])
-        col1.markdown(f"• {slab[0]}×{slab[1]}mm")
-        if col2.button("×", key=f"remove_custom_{i}_{slab[0]}_{slab[1]}", help="Remove this custom slab"):
+        col1, col2 = st.sidebar.columns([1, 3])
+        if col1.button("×", key=f"remove_custom_{i}_{slab[0]}_{slab[1]}", help="Remove this custom slab"):
             custom_slabs_to_remove.append(i)
+        col2.markdown(f"{slab[0]}×{slab[1]}mm")
     
     # Remove custom slabs (in reverse order to maintain indices)
     for i in reversed(custom_slabs_to_remove):
@@ -256,19 +256,85 @@ slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
 st.sidebar.markdown("---")
 st.sidebar.header("📦 Finished Units")
 
-# Initialize unit input fields in session state
-if "unit_width" not in st.session_state:
-    st.session_state.unit_width = 300
-if "unit_height" not in st.session_state:
-    st.session_state.unit_height = 200
-if "unit_quantity" not in st.session_state:
-    st.session_state.unit_quantity = 1
-if "unit_forced" not in st.session_state:
-    st.session_state.unit_forced = []
+# Initialize edit mode and unit rows in session state
+if "edit_mode" not in st.session_state:
+    st.session_state.edit_mode = False
+if "unit_rows" not in st.session_state:
+    st.session_state.unit_rows = []
 
-st.sidebar.markdown("**Add Unit:**")
+st.sidebar.markdown("**Units:**")
 
-# Single row input layout
+# Show existing units as editable rows when in edit mode
+if st.session_state.edit_mode and st.session_state.units:
+    units_to_update = []
+    units_to_remove = []
+    
+    for i, unit in enumerate(st.session_state.units):
+        col1, col2, col3, col4, col5 = st.sidebar.columns([1, 1, 0.7, 1.3, 0.5])
+        
+        with col1:
+            new_width = st.number_input("W", min_value=1, value=unit["width"], step=1, key=f"edit_width_{i}", label_visibility="collapsed")
+        
+        with col2:
+            new_height = st.number_input("H", min_value=1, value=unit["height"], step=1, key=f"edit_height_{i}", label_visibility="collapsed")
+        
+        with col3:
+            new_quantity = st.number_input("Qty", min_value=1, value=unit["quantity"], step=1, key=f"edit_quantity_{i}", label_visibility="collapsed")
+        
+        with col4:
+            # Handle forced slab display
+            current_forced = "Any"
+            if unit['forced_slabs']:
+                current_forced = f"{unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
+            
+            slab_options = ["Any"] + [f"{s[0]}×{s[1]}" for s in slab_sizes] if slab_sizes else ["Any"]
+            current_index = 0
+            if current_forced in slab_options:
+                current_index = slab_options.index(current_forced)
+            
+            new_forced = st.selectbox(
+                "Slab",
+                slab_options,
+                index=current_index,
+                key=f"edit_forced_{i}",
+                label_visibility="collapsed"
+            )
+        
+        with col5:
+            if st.button("×", key=f"remove_edit_{i}", help="Remove this unit"):
+                units_to_remove.append(i)
+        
+        # Prepare update data
+        forced_slabs = []
+        if new_forced and new_forced != "Any":
+            for slab in slab_sizes:
+                if f"{slab[0]}×{slab[1]}" == new_forced:
+                    forced_slabs = [slab]
+                    break
+        
+        units_to_update.append({
+            "width": new_width,
+            "height": new_height,
+            "quantity": new_quantity,
+            "forced_slabs": forced_slabs,
+            "order": unit["order"]
+        })
+    
+    # Remove units (in reverse order)
+    for i in reversed(units_to_remove):
+        del st.session_state.units[i]
+        st.rerun()
+
+else:
+    # Show units as simple list when not in edit mode
+    if st.session_state.units:
+        for unit in st.session_state.units:
+            forced_text = ""
+            if unit['forced_slabs']:
+                forced_text = f" → {unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
+            st.sidebar.markdown(f"• {unit['quantity']}× {unit['width']}×{unit['height']}mm{forced_text}")
+
+# Add new unit row
 col1, col2, col3, col4 = st.sidebar.columns([1, 1, 0.7, 1.3])
 
 with col1:
@@ -281,7 +347,6 @@ with col3:
     quantity = st.number_input("Qty", min_value=1, value=st.session_state.unit_quantity, step=1, key="quantity_input", label_visibility="visible")
 
 with col4:
-    # Only show forced slab selection if slabs are available
     forced = []
     if slab_sizes:
         forced = st.selectbox(
@@ -292,12 +357,14 @@ with col4:
             label_visibility="visible"
         )
 
+# Buttons row
+col1, col2 = st.sidebar.columns(2)
+
 # Add unit button
-if st.sidebar.button("➕ Add Unit", type="primary", use_container_width=True):
+if col1.button("➕ Add Unit", type="primary", use_container_width=True):
     # Process forced slab selection
     forced_slabs = []
     if forced and forced != "Any":
-        # Find the slab tuple that matches the selected string
         for slab in slab_sizes:
             if f"{slab[0]}×{slab[1]}" == forced:
                 forced_slabs = [slab]
@@ -318,37 +385,25 @@ if st.sidebar.button("➕ Add Unit", type="primary", use_container_width=True):
     st.session_state.unit_quantity = 1
     st.session_state.unit_forced = []
     
-    st.sidebar.success(f"✓ Added {quantity}× {width}×{height}mm")
     st.rerun()
 
-# Unit management - show as list
+# Update list button
+if col2.button("📝 Update List", type="secondary", use_container_width=True):
+    if st.session_state.edit_mode:
+        # Apply updates and exit edit mode
+        if st.session_state.units and 'units_to_update' in locals():
+            st.session_state.units = units_to_update
+        st.session_state.edit_mode = False
+    else:
+        # Enter edit mode
+        st.session_state.edit_mode = True
+    st.rerun()
+
+# Clear all button
 if st.session_state.units:
-    st.sidebar.markdown("**Current Units:**")
-    
-    total_units = sum(u["quantity"] for u in st.session_state.units)
-    st.sidebar.info(f"Total: {total_units} unit(s)")
-    
-    # Show units as a simple list with delete buttons
-    units_to_remove = []
-    for i, unit in enumerate(st.session_state.units):
-        col1, col2 = st.sidebar.columns([4, 1])
-        
-        forced_text = ""
-        if unit['forced_slabs']:
-            forced_text = f" → {unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
-        
-        col1.markdown(f"• {unit['quantity']}× {unit['width']}×{unit['height']}mm{forced_text}")
-        
-        if col2.button("×", key=f"delete_unit_{i}_{unit['width']}_{unit['height']}", help="Delete this unit"):
-            units_to_remove.append(i)
-    
-    # Remove units (in reverse order to maintain indices)
-    for i in reversed(units_to_remove):
-        del st.session_state.units[i]
-        st.rerun()
-    
     if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
+        st.session_state.edit_mode = False
         st.rerun()
 
 # -----------------------------
