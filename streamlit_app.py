@@ -162,7 +162,7 @@ st.markdown("""
     
     /* Tighter spacing for slab buttons */
     .stSidebar .stButton {
-        margin-bottom: 30rem;
+        margin-bottom: 1.5rem;
     }
     
     /* Larger gaps for main headers */
