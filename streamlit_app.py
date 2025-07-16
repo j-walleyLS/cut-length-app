@@ -151,18 +151,16 @@ st.markdown("""
         margin-bottom: 1.2rem !important;
     }
     
-    /* Remove default spacing from ALL sidebar elements EXCEPT our custom spacing divs */
-    .stSidebar .stButton,
+    /* SLAB BUTTONS - Give them small spacing */
+    button[data-testid*="slab_"] {
+        margin-bottom: 0.05rem !important;
+    }
+    
+    /* Remove default spacing from other elements */
     .stSidebar .stNumberInput,
     .stSidebar .stSelectbox,
     .stSidebar .stTextInput {
         margin-bottom: 0rem !important;
-    }
-    
-    /* Allow our custom spacing divs to work */
-    .stSidebar .stMarkdown div[style*="height: 0.05rem"] {
-        margin-bottom: 0.05rem !important;
-        height: 0.05rem !important;
     }
     
     /* Remove spacing around horizontal dividers */
@@ -229,8 +227,7 @@ for slab in col1_slabs:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
     
-    # Add small gap after each slab button
-    col1.markdown("<div style='margin-bottom: 0.05rem !important; height: 0.05rem;'></div>", unsafe_allow_html=True)
+    # Remove the manual spacing div since CSS handles it now
 
 for slab in col2_slabs:
     slab_key = f"{slab[0]}×{slab[1]}"
@@ -249,8 +246,7 @@ for slab in col2_slabs:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
     
-    # Add small gap after each slab button
-    col2.markdown("<div style='margin-bottom: 0.05rem !important; height: 0.05rem;'></div>", unsafe_allow_html=True)
+    # Remove the manual spacing div since CSS handles it now
 
 st.sidebar.markdown("---")
 
