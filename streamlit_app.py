@@ -146,29 +146,35 @@ st.markdown("""
     .stSidebar .stMarkdown h3 {
         margin-top: 0rem !important;
         padding-top: 0rem !important;
+        margin-bottom: 1rem !important;
     }
     
     /* Reduce spacing in sidebar */
     .stSidebar .stMarkdown {
         margin-bottom: 0.5rem;
     }
-    .stSidebar .stButton {
-        margin-bottom: 0.25rem;
-    }
-    .stSidebar .stNumberInput {
-        margin-bottom: 0.25rem;
-    }
-    .stSidebar .stSelectbox {
-        margin-bottom: 0.25rem;
-    }
     .stSidebar .stTextInput {
         margin-bottom: 0.25rem;
     }
     
-    /* Change button colors from red to green */
+    /* Tighter spacing for slab buttons */
+    .stSidebar .stButton {
+        margin-bottom: 0.1rem;
+    }
+    
+    /* Even spacing for input rows */
+    .stSidebar .stNumberInput {
+        margin-bottom: 0.5rem;
+    }
+    .stSidebar .stSelectbox {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Change button colors - primary buttons (green) */
     .stButton > button[kind="primary"] {
         background-color: #28a745;
         border-color: #28a745;
+        color: white;
     }
     .stButton > button[kind="primary"]:hover {
         background-color: #218838;
@@ -178,6 +184,12 @@ st.markdown("""
         background-color: #218838;
         border-color: #1e7e34;
         box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
+    }
+    
+    /* Make selected slab buttons green too */
+    .stButton > button[kind="primary"]:active {
+        background-color: #1e7e34;
+        border-color: #1c7430;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -318,8 +330,6 @@ if "unit_quantity" not in st.session_state:
 if "unit_forced" not in st.session_state:
     st.session_state.unit_forced = []
 
-st.sidebar.markdown("**Units:**")
-
 # Show input rows for adding/editing units
 rows_to_remove = []
 for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
@@ -354,7 +364,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         )
     
     with col5:
-        # Add padding to align with input fields
+        # Add padding to align with input fields only on first row
         if row_idx == 0:
             st.markdown("<div style='height: 36px;'></div>", unsafe_allow_html=True)  # Space for label
         
