@@ -215,22 +215,19 @@ custom_input = st.sidebar.text_input(
 )
 
 # Process single custom slab input
-if custom_input and custom_input != st.session_state.custom_input:
-    try:
-        new_slab = parse_dimensions(custom_input)
-        if new_slab not in st.session_state.custom_slabs:
-            st.session_state.custom_slabs.append(new_slab)
-        # Clear the input without showing messages
-        st.session_state.custom_input = ""
-        st.rerun()
-    except Exception as e:
-        # Only show error if there's actually an error
-        if custom_input.strip():  # Only show error if there's actual content
-            st.sidebar.error("❌ Invalid format. Use: 800x400")
-
-# Update session state only if custom_input is valid
-if not custom_input or 'x' in custom_input.lower():
+if custom_input != st.session_state.custom_input:
     st.session_state.custom_input = custom_input
+    
+    if custom_input.strip() and 'x' in custom_input.lower():
+        try:
+            new_slab = parse_dimensions(custom_input)
+            if new_slab not in st.session_state.custom_slabs:
+                st.session_state.custom_slabs.append(new_slab)
+                # Clear the input by resetting the key
+                st.session_state.custom_input = ""
+                st.rerun()
+        except Exception as e:
+            st.sidebar.error("❌ Invalid format. Use: 800x400")
 
 # Display custom slabs list
 if st.session_state.custom_slabs:
@@ -330,9 +327,11 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         "forced": forced
     }
 
-# Remove rows (in reverse order)
-for row_idx in reversed(rows_to_remove):
-    del st.session_state.unit_input_rows[row_idx]
+# Remove rows (in reverse order) - avoid rerun in loop
+if rows_to_remove:
+    for row_idx in reversed(rows_to_remove):
+        if row_idx < len(st.session_state.unit_input_rows):
+            del st.session_state.unit_input_rows[row_idx]
     st.rerun()
 
 # Buttons row
