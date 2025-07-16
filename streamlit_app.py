@@ -223,11 +223,14 @@ if custom_input and custom_input != st.session_state.custom_input:
         # Clear the input without showing messages
         st.session_state.custom_input = ""
         st.rerun()
-    except:
-        st.sidebar.error("❌ Invalid format. Use: 800x400")
+    except Exception as e:
+        # Only show error if there's actually an error
+        if custom_input.strip():  # Only show error if there's actual content
+            st.sidebar.error("❌ Invalid format. Use: 800x400")
 
-# Update session state
-st.session_state.custom_input = custom_input
+# Update session state only if custom_input is valid
+if not custom_input or 'x' in custom_input.lower():
+    st.session_state.custom_input = custom_input
 
 # Display custom slabs list
 if st.session_state.custom_slabs:
@@ -283,13 +286,17 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     col1, col2, col3, col4, col5 = st.sidebar.columns([1, 1, 0.7, 1.5, 0.4])
     
     with col1:
-        width = st.number_input("Width", min_value=1, value=row_data["width"], step=1, key=f"width_input_{row_idx}", label_visibility="visible")
+        # Only show label on first row
+        label_vis = "visible" if row_idx == 0 else "collapsed"
+        width = st.number_input("Width", min_value=1, value=row_data["width"], step=1, key=f"width_input_{row_idx}", label_visibility=label_vis)
     
     with col2:
-        height = st.number_input("Height", min_value=1, value=row_data["height"], step=1, key=f"height_input_{row_idx}", label_visibility="visible")
+        label_vis = "visible" if row_idx == 0 else "collapsed"
+        height = st.number_input("Height", min_value=1, value=row_data["height"], step=1, key=f"height_input_{row_idx}", label_visibility=label_vis)
     
     with col3:
-        quantity = st.number_input("Qty", min_value=1, value=row_data["quantity"], step=1, key=f"quantity_input_{row_idx}", label_visibility="visible")
+        label_vis = "visible" if row_idx == 0 else "collapsed"
+        quantity = st.number_input("Qty", min_value=1, value=row_data["quantity"], step=1, key=f"quantity_input_{row_idx}", label_visibility=label_vis)
     
     with col4:
         slab_options = ["Any"] + [f"{s[0]}×{s[1]}" for s in slab_sizes] if slab_sizes else ["Any"]
@@ -297,15 +304,20 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
         if row_data["forced"] in slab_options:
             current_index = slab_options.index(row_data["forced"])
         
+        label_vis = "visible" if row_idx == 0 else "collapsed"
         forced = st.selectbox(
             "Force Cutting From",
             slab_options,
             index=current_index,
             key=f"forced_input_{row_idx}",
-            label_visibility="visible"
+            label_visibility=label_vis
         )
     
     with col5:
+        # Add padding to align with input fields
+        if row_idx == 0:
+            st.markdown("<div style='height: 36px;'></div>", unsafe_allow_html=True)  # Space for label
+        
         if len(st.session_state.unit_input_rows) > 1:  # Only show remove if more than one row
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
                 rows_to_remove.append(row_idx)
@@ -352,10 +364,58 @@ if col1.button("➕ Add Unit", type="primary", use_container_width=True):
     st.session_state.unit_input_rows.append({"width": 300, "height": 200, "quantity": 1, "forced": "Any"})
     st.rerun()
 
-# Update list button
+# Update list button - consolidates units and reforms the list
 if col2.button("📝 Update List", type="secondary", use_container_width=True):
-    st.session_state.edit_mode = not st.session_state.edit_mode
+    # Create consolidated units from all input rows
+    consolidated_units = {}
+    
+    for row_data in st.session_state.unit_input_rows:
+        if row_data["width"] and row_data["height"] and row_data["quantity"]:
+            # Process forced slab selection
+            forced_slabs = []
+            if row_data["forced"] and row_data["forced"] != "Any":
+                for slab in slab_sizes:
+                    if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                        forced_slabs = [slab]
+                        break
+            
+            # Create key for consolidation (width, height, forced_slab)
+            forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+            unit_key = (row_data["width"], row_data["height"], forced_key)
+            
+            if unit_key in consolidated_units:
+                consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+            else:
+                consolidated_units[unit_key] = {
+                    "width": row_data["width"],
+                    "height": row_data["height"],
+                    "quantity": row_data["quantity"],
+                    "forced_slabs": forced_slabs
+                }
+    
+    # Replace units list with consolidated units
+    st.session_state.units = []
+    for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+        st.session_state.units.append({
+            "width": unit_data["width"],
+            "height": unit_data["height"],
+            "quantity": unit_data["quantity"],
+            "forced_slabs": unit_data["forced_slabs"],
+            "order": i
+        })
+    
+    # Reset input rows to single empty row
+    st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
     st.rerun()
+
+# Show the current units list between buttons and clear all
+if st.session_state.units:
+    st.sidebar.markdown("**Current Units:**")
+    for unit in st.session_state.units:
+        forced_text = ""
+        if unit['forced_slabs']:
+            forced_text = f" → {unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
+        st.sidebar.markdown(f"• {unit['quantity']}× {unit['width']}×{unit['height']}mm{forced_text}")
 
 # Clear all button
 if st.session_state.units:
