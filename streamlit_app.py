@@ -154,7 +154,7 @@ st.markdown("""
     
     /* INDEPENDENT SPACING - Slab buttons only (first section) */
     .stSidebar > div > div:nth-child(3) .stButton {
-        margin-bottom: 150rem; /* Tight spacing for slab buttons */
+        margin-bottom: 0.2rem; /* Tight spacing for slab buttons */
     }
     
     /* INDEPENDENT SPACING - Custom slab remove buttons */
@@ -280,6 +280,16 @@ for slab in col2_slabs:
         else:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
+
+# Add CSS to target slab buttons specifically
+st.markdown("""
+<style>
+    /* Target slab buttons by their key pattern */
+    .stSidebar button[data-testid*="slab_"] {
+        margin-bottom: 150rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 
