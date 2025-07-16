@@ -131,21 +131,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS to remove sidebar spacing
-st.markdown("""
-<style>
-    .block-container {
-        padding-top: 1rem;
-    }
-    .stSidebar > div:first-child {
-        padding-top: 0rem;
-    }
-    .stSidebar .stMarkdown:first-child {
-        margin-top: -1rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # Initialize session state
 if "units" not in st.session_state:
     st.session_state.units = []
@@ -165,7 +150,7 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 # -----------------------------
 # Sidebar - Slab Selection
 # -----------------------------
-st.sidebar.markdown("### 📐 Available Slab Sizes")
+st.sidebar.header("📐 Available Slab Sizes")
 
 # Define all available slab sizes in specific column order
 col1_slabs = [(600, 600), (900, 700), (900, 500), (2000, 500)]
@@ -216,29 +201,51 @@ st.sidebar.markdown("---")
 
 # Custom slab input with improved UI
 st.sidebar.subheader("Custom Slab Sizes")
+
+# Initialize custom input in session state
+if "custom_input" not in st.session_state:
+    st.session_state.custom_input = ""
+
 custom_input = st.sidebar.text_input(
-    "Enter custom sizes",
-    placeholder="e.g. 800x400, 1000x500",
-    help="Separate multiple sizes with commas"
+    "Enter one size at a time",
+    value=st.session_state.custom_input,
+    placeholder="e.g. 800x400",
+    help="Enter width x height and press Enter",
+    key="custom_slab_input"
 )
 
-if custom_input:
+# Process single custom slab input
+if custom_input and custom_input != st.session_state.custom_input:
     try:
-        st.session_state.custom_slabs = [parse_dimensions(x) for x in custom_input.split(",") if x.strip()]
-        if st.session_state.custom_slabs:
-            st.sidebar.success(f"✓ {len(st.session_state.custom_slabs)} custom slab(s) added")
+        new_slab = parse_dimensions(custom_input)
+        if new_slab not in st.session_state.custom_slabs:
+            st.session_state.custom_slabs.append(new_slab)
+            st.sidebar.success(f"✓ Added {new_slab[0]}×{new_slab[1]}mm")
+        else:
+            st.sidebar.warning("⚠️ This slab size already exists")
+        # Clear the input
+        st.session_state.custom_input = ""
+        st.rerun()
     except:
-        st.sidebar.error("❌ Invalid format. Use: 800x400, 1000x500")
+        st.sidebar.error("❌ Invalid format. Use: 800x400")
+
+# Update session state
+st.session_state.custom_input = custom_input
 
 # Display custom slabs list
 if st.session_state.custom_slabs:
     st.sidebar.markdown("**Custom Slabs:**")
+    custom_slabs_to_remove = []
     for i, slab in enumerate(st.session_state.custom_slabs):
         col1, col2 = st.sidebar.columns([3, 1])
         col1.markdown(f"• {slab[0]}×{slab[1]}mm")
-        if col2.button("×", key=f"remove_custom_{i}", help="Remove this custom slab"):
-            st.session_state.custom_slabs.pop(i)
-            st.rerun()
+        if col2.button("×", key=f"remove_custom_{i}_{slab[0]}_{slab[1]}", help="Remove this custom slab"):
+            custom_slabs_to_remove.append(i)
+    
+    # Remove custom slabs (in reverse order to maintain indices)
+    for i in reversed(custom_slabs_to_remove):
+        del st.session_state.custom_slabs[i]
+        st.rerun()
 
 # Combine selected default slabs with custom slabs
 slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
@@ -249,66 +256,98 @@ slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
 st.sidebar.markdown("---")
 st.sidebar.header("📦 Finished Units")
 
-with st.sidebar.form("unit_form"):
-    st.markdown("**Add a new unit:**")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        width = st.number_input("Width (mm)", min_value=1, value=300, step=1)
-    with col2:
-        height = st.number_input("Height (mm)", min_value=1, value=200, step=1)
-    
-    quantity = st.number_input("Quantity", min_value=1, value=1, step=1)
-    
+# Initialize unit input fields in session state
+if "unit_width" not in st.session_state:
+    st.session_state.unit_width = 300
+if "unit_height" not in st.session_state:
+    st.session_state.unit_height = 200
+if "unit_quantity" not in st.session_state:
+    st.session_state.unit_quantity = 1
+if "unit_forced" not in st.session_state:
+    st.session_state.unit_forced = []
+
+st.sidebar.markdown("**Add Unit:**")
+
+# Single row input layout
+col1, col2, col3, col4 = st.sidebar.columns([1, 1, 0.7, 1.3])
+
+with col1:
+    width = st.number_input("W", min_value=1, value=st.session_state.unit_width, step=1, key="width_input", label_visibility="visible")
+
+with col2:
+    height = st.number_input("H", min_value=1, value=st.session_state.unit_height, step=1, key="height_input", label_visibility="visible")
+
+with col3:
+    quantity = st.number_input("Qty", min_value=1, value=st.session_state.unit_quantity, step=1, key="quantity_input", label_visibility="visible")
+
+with col4:
     # Only show forced slab selection if slabs are available
     forced = []
     if slab_sizes:
-        forced = st.multiselect(
-            "Force specific slab(s)? (optional)",
-            slab_sizes,
-            default=[],
-            help="Leave empty to allow any suitable slab"
+        forced = st.selectbox(
+            "Slab",
+            ["Any"] + [f"{s[0]}×{s[1]}" for s in slab_sizes],
+            index=0,
+            key="forced_input",
+            label_visibility="visible"
         )
-    
-    col1, col2 = st.columns(2)
-    submitted = col1.form_submit_button("➕ Add Unit", type="primary")
-    
-    if submitted:
-        st.session_state.units.append({
-            "width": width,
-            "height": height,
-            "quantity": quantity,
-            "forced_slabs": forced,
-            "order": len(st.session_state.units)
-        })
-        st.success(f"✓ Added {quantity}× {width}×{height}mm unit(s)")
 
-# Unit management
+# Add unit button
+if st.sidebar.button("➕ Add Unit", type="primary", use_container_width=True):
+    # Process forced slab selection
+    forced_slabs = []
+    if forced and forced != "Any":
+        # Find the slab tuple that matches the selected string
+        for slab in slab_sizes:
+            if f"{slab[0]}×{slab[1]}" == forced:
+                forced_slabs = [slab]
+                break
+    
+    # Add the unit
+    st.session_state.units.append({
+        "width": width,
+        "height": height,
+        "quantity": quantity,
+        "forced_slabs": forced_slabs,
+        "order": len(st.session_state.units)
+    })
+    
+    # Reset input fields to defaults for next entry
+    st.session_state.unit_width = 300
+    st.session_state.unit_height = 200
+    st.session_state.unit_quantity = 1
+    st.session_state.unit_forced = []
+    
+    st.sidebar.success(f"✓ Added {quantity}× {width}×{height}mm")
+    st.rerun()
+
+# Unit management - show as list
 if st.session_state.units:
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📋 Current Units")
+    st.sidebar.markdown("**Current Units:**")
     
     total_units = sum(u["quantity"] for u in st.session_state.units)
-    st.sidebar.info(f"**Total: {total_units} unit(s) in {len(st.session_state.units)} type(s)**")
+    st.sidebar.info(f"Total: {total_units} unit(s)")
     
-    # Show units with delete functionality
+    # Show units as a simple list with delete buttons
     units_to_remove = []
     for i, unit in enumerate(st.session_state.units):
-        with st.sidebar.expander(f"{unit['quantity']}× {unit['width']}×{unit['height']}mm"):
-            st.write(f"**Dimensions:** {unit['width']}×{unit['height']}mm")
-            st.write(f"**Quantity:** {unit['quantity']}")
-            if unit['forced_slabs']:
-                st.write(f"**Forced slabs:** {', '.join(f'{s[0]}×{s[1]}' for s in unit['forced_slabs'])}")
-            
-            if st.button(f"🗑️ Delete", key=f"delete_{i}"):
-                units_to_remove.append(i)
+        col1, col2 = st.sidebar.columns([4, 1])
+        
+        forced_text = ""
+        if unit['forced_slabs']:
+            forced_text = f" → {unit['forced_slabs'][0][0]}×{unit['forced_slabs'][0][1]}"
+        
+        col1.markdown(f"• {unit['quantity']}× {unit['width']}×{unit['height']}mm{forced_text}")
+        
+        if col2.button("×", key=f"delete_unit_{i}_{unit['width']}_{unit['height']}", help="Delete this unit"):
+            units_to_remove.append(i)
     
     # Remove units (in reverse order to maintain indices)
     for i in reversed(units_to_remove):
         del st.session_state.units[i]
         st.rerun()
     
-    if st.sidebar.button("🗑️ Clear All Units", type="secondary"):
+    if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
         st.rerun()
 
