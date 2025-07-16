@@ -414,7 +414,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     with col5:
         # Center the remove button vertically on all rows
         if row_idx == 0:
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)  # Reduced padding for better centering
+            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)  # Better centering for top row
         
         if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:  # Always show remove except for single first row
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
@@ -422,7 +422,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     
     # Add spacing between rows using markdown
     if row_idx < len(st.session_state.unit_input_rows) - 1:  # Don't add space after last row
-        st.sidebar.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
+        st.sidebar.markdown("<div style='margin-bottom: 3rem;'></div>", unsafe_allow_html=True)
     
     # Update row data
     st.session_state.unit_input_rows[row_idx] = {
@@ -438,6 +438,9 @@ if rows_to_remove:
         if row_idx < len(st.session_state.unit_input_rows):
             del st.session_state.unit_input_rows[row_idx]
     st.rerun()
+
+# Add 1rem spacing before buttons
+st.sidebar.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
 
 # Buttons row
 col1, col2 = st.sidebar.columns(2)
