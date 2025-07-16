@@ -164,7 +164,15 @@ st.markdown("""
     
     /* INDEPENDENT SPACING - Gap before horizontal separator (after custom slabs) */
     .stSidebar > div > div:nth-child(4) {
-        margin-bottom: 0.375rem; /* Half of the default 0.75rem */
+        margin-bottom: 0rem; /* No space before horizontal separator */
+    }
+    
+    /* INDEPENDENT SPACING - Remove all space around horizontal dividers */
+    .stSidebar hr {
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
     }
     
     /* INDEPENDENT SPACING - Add Unit, Update List, Clear All buttons */
