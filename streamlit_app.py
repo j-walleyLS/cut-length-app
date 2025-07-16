@@ -182,12 +182,12 @@ st.markdown("""
     
     /* INDEPENDENT SPACING - Unit input fields (Width, Height, Qty) */
     .stSidebar .stColumns .stNumberInput {
-        margin-bottom: 1.5rem; /* Increased gap between unit input rows */
+        margin-bottom: 3rem; /* Increased gap between unit input rows */
     }
     
     /* INDEPENDENT SPACING - Force Cutting From dropdowns */
     .stSidebar .stColumns .stSelectbox {
-        margin-bottom: 1.5rem; /* Match unit input spacing */
+        margin-bottom: 3rem; /* Match unit input spacing */
     }
     
     /* INDEPENDENT SPACING - Custom slab input field */
