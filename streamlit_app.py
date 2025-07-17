@@ -299,6 +299,12 @@ st.markdown("""
         padding: 0rem !important;
     }
     
+    /* EXPANDER HEADERS - Double the font size */
+    .stExpander > div > div > div > div {
+        font-size: 2rem !important;
+        font-weight: bold !important;
+    }
+    
     /* Button colors */
     .stButton > button[kind="primary"] {
         background-color: #28a745;
