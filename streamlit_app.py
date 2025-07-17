@@ -299,8 +299,23 @@ st.markdown("""
         padding: 0rem !important;
     }
     
-    /* EXPANDER HEADERS - Double the font size */
-    .stExpander > div > div > div > div {
+    /* EXPANDER HEADERS - Try multiple selectors for larger font */
+    .stExpander summary {
+        font-size: 2rem !important;
+        font-weight: bold !important;
+    }
+    
+    .stExpander > div:first-child {
+        font-size: 2rem !important;
+        font-weight: bold !important;
+    }
+    
+    .stExpander label {
+        font-size: 2rem !important;
+        font-weight: bold !important;
+    }
+    
+    [data-testid="stExpander"] summary {
         font-size: 2rem !important;
         font-weight: bold !important;
     }
@@ -649,7 +664,7 @@ if slab_sizes and st.session_state.units:
         
         # Detailed results
         for result in slab_outputs:
-            with st.expander(f"# {result['slab_count']}no. **{result['slab']}mm Slab**", expanded=True):
+            with st.expander(f"{result['slab_count']}no. {result['slab']}mm Slab", expanded=True):
                 col1, col2 = st.columns(2)
                 col1.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 col2.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
