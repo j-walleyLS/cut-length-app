@@ -654,7 +654,7 @@ if slab_sizes and st.session_state.units:
         
         # Detailed results
         for result in slab_outputs:
-            with st.expander(f"{result['slab_count']}no. {result['slab']}mm Slab", expanded=True):
+            with st.expander(f"{result['slab']}mm Slab", expanded=True):
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
