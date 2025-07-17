@@ -655,22 +655,23 @@ if slab_sizes and st.session_state.units:
         # Detailed results
         for result in slab_outputs:
             with st.expander(f"{result['slab_count']}no. {result['slab']}mm Slab", expanded=True):
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
+                    st.metric("No. of Slabs Used", result['slab_count'])
                 
                 with col2:
-                    st.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
+                    st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 
                 with col3:
+                    st.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
+                
+                with col4:
                     st.markdown("**Units Produced:**")
-                    units_list = []
                     for order in sorted(result["units"]):
                         u = next(u for u in st.session_state.units if u["order"] == order)
                         qty = result['units'][order]
-                        units_list.append(f"• {qty}no. {u['width']}×{u['height']}mm")
-                    st.markdown("\n".join(units_list))
+                        st.markdown(f"<div style='margin-bottom: 0px; line-height: 1.2;'>• {qty}no. {u['width']}×{u['height']}mm</div>", unsafe_allow_html=True)
         
         # Global summary
         if global_boqlines:
