@@ -643,7 +643,7 @@ if slab_sizes and st.session_state.units:
         
         # Detailed results
         for result in slab_outputs:
-            with st.expander(f"## {result['slab_count']}no. **{result['slab']}mm Slab**", expanded=True):
+            with st.expander(f"# {result['slab_count']}no. **{result['slab']}mm Slab**", expanded=True):
                 col1, col2 = st.columns(2)
                 col1.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 col2.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
