@@ -18,8 +18,6 @@ def unit_too_large(unit, slab_w, slab_h):
     w, h = unit["width"], unit["height"]
     return not ((w <= slab_w and h <= slab_h) or (h <= slab_w and w <= slab_h))
 
-# REMOVED OLD FILTER FUNCTION - NO LONGER NEEDED
-
 # -----------------------------
 # DFS Packing Core Logic
 # -----------------------------
@@ -121,6 +119,9 @@ def pack_one_slab(slab_width, slab_height, units):
     repack_dfs([(0, 0, slab_width, slab_height)], pieces, [], best_solution, slab_width, slab_height, branch_count)
     return best_solution
 
+# -----------------------------
+# Global Optimization Functions
+# -----------------------------
 def can_unit_fit_in_slab(unit, slab_width, slab_height):
     """Check if a unit can fit in a slab (considering rotation)"""
     w, h = unit["width"], unit["height"]
@@ -265,7 +266,7 @@ st.markdown("""
     
     /* SLAB BUTTONS - Give them small spacing */
     button[data-testid*="slab_"] {
-        margin-bottom: 0.05rem !important;
+        margin-bottom: 0.1rem !important;
     }
     
     /* Remove default spacing from other elements */
@@ -338,8 +339,6 @@ for slab in col1_slabs:
         else:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
-    
-    # Remove the manual spacing div since CSS handles it now
 
 for slab in col2_slabs:
     slab_key = f"{slab[0]}×{slab[1]}"
@@ -357,8 +356,6 @@ for slab in col2_slabs:
         else:
             st.session_state.selected_slabs.append(slab)
         st.rerun()
-    
-    # Remove the manual spacing div since CSS handles it now
 
 st.sidebar.markdown("---")
 
@@ -545,26 +542,27 @@ if st.session_state.units:
         st.rerun()
 
 # -----------------------------
-# Main Results Section
+# Main Results Section - COMPLETELY NEW ALGORITHM
 # -----------------------------
 if slab_sizes and st.session_state.units:
     st.header("📊 Optimization Results")
     
     with st.spinner("Optimizing cut layouts..."):
-        global_boqlines = {}
-        slab_outputs = []
+        # STEP 1: Find optimal allocation (each unit goes to ONE slab type only)
+        allocation = optimize_unit_allocation(st.session_state.units, slab_sizes)
         
-        for slab in slab_sizes:
+        # STEP 2: Generate results ONLY for allocated slabs
+        slab_outputs = []
+        global_boqlines = {}
+        
+        for slab, allocated_units in allocation.items():
             sw, sh = slab
-            slab_units = filter_units_for_slab(st.session_state.units, slab)
-            if not slab_units:
-                continue
-            
-            remaining = copy.deepcopy(slab_units)
+            remaining = copy.deepcopy(allocated_units)
             produced = {}
             cut_length = 0
             slab_count = 0
             
+            # Pack slabs until all allocated units are produced
             while any(u["quantity"] > 0 for u in remaining):
                 best = pack_one_slab(sw, sh, remaining)
                 if not best["layout"]:
@@ -583,8 +581,13 @@ if slab_sizes and st.session_state.units:
                 
                 cut_length += best["cost"]
             
-            if produced:
-                area = sum(u["width"] * u["height"] * qty for u in st.session_state.units for order, qty in produced.items() if u["order"] == order)
+            if produced:  # Only add if something was actually produced
+                # Calculate areas using original units for reference
+                area = 0
+                for order, qty in produced.items():
+                    original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                    area += original_unit["width"] * original_unit["height"] * qty
+                
                 waste_area = (sw * sh * slab_count) - area
                 efficiency = (area / (sw * sh * slab_count)) * 100 if slab_count > 0 else 0
                 
@@ -598,6 +601,12 @@ if slab_sizes and st.session_state.units:
                     "efficiency": efficiency,
                     "slab_count": slab_count
                 })
+                
+                # Build global BOQ
+                for order, qty in produced.items():
+                    original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                    key = (original_unit['width'], original_unit['height'])
+                    global_boqlines[key] = global_boqlines.get(key, 0) + qty
     
     if slab_outputs:
         # Summary metrics
@@ -628,7 +637,6 @@ if slab_sizes and st.session_state.units:
                     u = next(u for u in st.session_state.units if u["order"] == order)
                     qty = result['units'][order]
                     boq_data.append(f"• {qty}no. {u['width']}×{u['height']}mm")
-                    global_boqlines[(u['width'], u['height'])] = global_boqlines.get((u['width'], u['height']), 0) + qty
                 
                 st.markdown("\n".join(boq_data))
         
