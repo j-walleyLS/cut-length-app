@@ -135,15 +135,17 @@ def get_viable_slabs_for_unit(unit, slab_sizes):
             viable_slabs.append(slab)
     return viable_slabs
 
-def calculate_packing_efficiency(unit_types, slab, max_iterations=3):
+def calculate_packing_efficiency(unit_types, slab, max_iterations=5):
     """Calculate how efficiently unit types pack into a given slab size"""
     slab_width, slab_height = slab
     slab_area = slab_width * slab_height
     
     # Create test units for efficiency calculation
     test_units = []
+    total_unit_area = 0
+    
     for unit_type in unit_types:
-        # Use min(quantity, max_iterations) to avoid excessive computation
+        # Use actual quantity or max_iterations, whichever is smaller
         test_quantity = min(unit_type["quantity"], max_iterations)
         if test_quantity > 0:
             test_units.append({
@@ -152,22 +154,30 @@ def calculate_packing_efficiency(unit_types, slab, max_iterations=3):
                 "quantity": test_quantity,
                 "order": unit_type["order"]
             })
+            total_unit_area += unit_type["width"] * unit_type["height"] * test_quantity
     
-    if not test_units:
+    if not test_units or total_unit_area == 0:
         return 0.0
     
     # Try packing these units
     result = pack_one_slab(slab_width, slab_height, test_units)
     
-    if not result["layout"]:
+    if not result["layout"] or result["count"] == 0:
         return 0.0
     
-    # Calculate efficiency as ratio of used area to slab area
+    # Calculate actual area used by packed pieces
     used_area = 0
     for placement in result["layout"]:
         used_area += placement.used_width * placement.used_height
     
-    return used_area / slab_area
+    # Efficiency is the ratio of unit area to slab area
+    # This gives us the true material utilization
+    efficiency = total_unit_area / slab_area
+    
+    # Bonus for fitting more pieces (packing density)
+    packing_success_rate = result["count"] / sum(u["quantity"] for u in test_units)
+    
+    return efficiency * packing_success_rate
 
 def optimize_unit_allocation(units, slab_sizes):
     """
@@ -203,26 +213,33 @@ def optimize_unit_allocation(units, slab_sizes):
         
         # Test each viable slab and find the most efficient one
         best_slab = None
-        best_score = -1
+        best_total_slabs_needed = float('inf')
+        best_efficiency = -1
         
         for slab in viable_slabs:
             # Calculate packing efficiency for this unit in this slab
             efficiency = calculate_packing_efficiency([unit], slab)
             
-            # Calculate total area efficiency
+            if efficiency <= 0:
+                continue  # Skip slabs where nothing fits
+            
+            # Calculate how many slabs would actually be needed
             slab_area = slab[0] * slab[1]
             unit_area = unit["width"] * unit["height"] * unit["quantity"]
             
-            # Estimate how many slabs needed
-            estimated_slabs = max(1, math.ceil(unit_area / (slab_area * max(0.1, efficiency))))
-            total_area_needed = estimated_slabs * slab_area
+            # Estimate slabs needed based on efficiency
+            # Higher efficiency = fewer slabs needed
+            estimated_slabs_needed = math.ceil(unit_area / (slab_area * efficiency))
             
-            # Score: higher efficiency is better, lower total area is better
-            area_efficiency = unit_area / total_area_needed if total_area_needed > 0 else 0
-            score = efficiency * 0.7 + area_efficiency * 0.3
+            # Prefer solution that needs fewer total slabs
+            # Break ties with higher efficiency
+            is_better = (estimated_slabs_needed < best_total_slabs_needed) or (
+                estimated_slabs_needed == best_total_slabs_needed and efficiency > best_efficiency
+            )
             
-            if score > best_score:
-                best_score = score
+            if is_better:
+                best_total_slabs_needed = estimated_slabs_needed
+                best_efficiency = efficiency
                 best_slab = slab
         
         # Allocate this unit type to its single best slab
