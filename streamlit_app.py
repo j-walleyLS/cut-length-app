@@ -665,10 +665,12 @@ if slab_sizes and st.session_state.units:
                 
                 with col3:
                     st.markdown("**Units Produced:**")
+                    units_list = []
                     for order in sorted(result["units"]):
                         u = next(u for u in st.session_state.units if u["order"] == order)
                         qty = result['units'][order]
-                        st.markdown(f"• {qty}no. {u['width']}×{u['height']}mm")
+                        units_list.append(f"• {qty}no. {u['width']}×{u['height']}mm")
+                    st.markdown("\n".join(units_list))
         
         # Global summary
         if global_boqlines:
