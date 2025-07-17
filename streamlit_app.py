@@ -18,9 +18,7 @@ def unit_too_large(unit, slab_w, slab_h):
     w, h = unit["width"], unit["height"]
     return not ((w <= slab_w and h <= slab_h) or (h <= slab_w and w <= slab_h))
 
-def filter_units_for_slab(units, slab):
-    sw, sh = slab
-    return [u for u in units if ((not u["forced_slabs"]) or (slab in u["forced_slabs"])) and not unit_too_large(u, sw, sh)]
+# REMOVED OLD FILTER FUNCTION - NO LONGER NEEDED
 
 # -----------------------------
 # DFS Packing Core Logic
@@ -136,7 +134,7 @@ def get_viable_slabs_for_unit(unit, slab_sizes):
             viable_slabs.append(slab)
     return viable_slabs
 
-def calculate_packing_efficiency(unit_types, slab, max_iterations=5):
+def calculate_packing_efficiency(unit_types, slab, max_iterations=3):
     """Calculate how efficiently unit types pack into a given slab size"""
     slab_width, slab_height = slab
     slab_area = slab_width * slab_height
@@ -176,115 +174,64 @@ def optimize_unit_allocation(units, slab_sizes):
     Each unit type is allocated to exactly ONE optimal slab size.
     Returns a dictionary mapping slab sizes to lists of units to cut from that slab.
     """
-    # Initialize allocation dictionary
-    allocation = {slab: [] for slab in slab_sizes}
+    # Initialize allocation dictionary - only include available slab sizes
+    allocation = {}
     
     # Process each unit type individually to find its optimal slab
     for unit in units:
-        # Handle forced constraints first
-        if unit.get("forced_slabs"):
+        unit_allocated = False
+        
+        # Handle forced constraints first - these override optimization
+        if unit.get("forced_slabs") and len(unit["forced_slabs"]) > 0:
             forced_slab = tuple(unit["forced_slabs"][0])
-            if forced_slab in allocation:
+            if forced_slab in slab_sizes:  # Make sure forced slab is available
+                if forced_slab not in allocation:
+                    allocation[forced_slab] = []
                 allocation[forced_slab].append(copy.deepcopy(unit))
+                unit_allocated = True
             continue
         
         # For free units, find the single best slab
-        viable_slabs = get_viable_slabs_for_unit(unit, slab_sizes)
+        viable_slabs = []
+        for slab in slab_sizes:
+            if can_unit_fit_in_slab(unit, slab[0], slab[1]):
+                viable_slabs.append(slab)
         
         if not viable_slabs:
             continue  # Skip units that don't fit anywhere
         
         # Test each viable slab and find the most efficient one
         best_slab = None
-        best_efficiency = -1
-        best_total_area = float('inf')
+        best_score = -1
         
         for slab in viable_slabs:
             # Calculate packing efficiency for this unit in this slab
             efficiency = calculate_packing_efficiency([unit], slab)
             
-            # Calculate how many slabs would be needed for this unit type
+            # Calculate total area efficiency
             slab_area = slab[0] * slab[1]
             unit_area = unit["width"] * unit["height"] * unit["quantity"]
-            theoretical_slabs_needed = math.ceil(unit_area / slab_area)
-            total_area_needed = theoretical_slabs_needed * slab_area
             
-            # Prefer higher efficiency, but break ties with smaller total area
-            is_better = (efficiency > best_efficiency) or (
-                abs(efficiency - best_efficiency) < 0.05 and total_area_needed < best_total_area
-            )
+            # Estimate how many slabs needed
+            estimated_slabs = max(1, math.ceil(unit_area / (slab_area * max(0.1, efficiency))))
+            total_area_needed = estimated_slabs * slab_area
             
-            if is_better:
-                best_efficiency = efficiency
-                best_total_area = total_area_needed
+            # Score: higher efficiency is better, lower total area is better
+            area_efficiency = unit_area / total_area_needed if total_area_needed > 0 else 0
+            score = efficiency * 0.7 + area_efficiency * 0.3
+            
+            if score > best_score:
+                best_score = score
                 best_slab = slab
         
         # Allocate this unit type to its single best slab
         if best_slab:
+            if best_slab not in allocation:
+                allocation[best_slab] = []
             allocation[best_slab].append(copy.deepcopy(unit))
-    
-    # Remove empty allocations
-    allocation = {slab: units_list for slab, units_list in allocation.items() if units_list}
+            unit_allocated = True
     
     return allocation
-
-def simulate_production_from_allocation(allocation):
-    """
-    Simulate production using the optimized allocation.
-    Returns results in the same format as the original algorithm.
-    """
-    slab_outputs = []
-    
-    for slab, assigned_units in allocation.items():
-        if not assigned_units:
-            continue
-            
-        sw, sh = slab
-        remaining = copy.deepcopy(assigned_units)
-        produced = {}
-        cut_length = 0
-        slab_count = 0
-        
-        # Pack slabs until all assigned units are produced
-        while any(u["quantity"] > 0 for u in remaining):
-            best = pack_one_slab(sw, sh, remaining)
-            if not best["layout"]:
-                break
-            
-            slab_count += 1
-            counts = {}
-            for p in best["layout"]:
-                counts[p.unit_order] = counts.get(p.unit_order, 0) + 1
-            
-            for u in remaining:
-                if u["order"] in counts:
-                    used = counts[u["order"]]
-                    u["quantity"] -= used
-                    produced[u["order"]] = produced.get(u["order"], 0) + used
-            
-            cut_length += best["cost"]
-        
-        if produced:  # Only add if something was actually produced
-            # Calculate areas
-            area = sum(
-                next(u["width"] * u["height"] for u in assigned_units if u["order"] == order) * qty 
-                for order, qty in produced.items()
-            )
-            waste_area = (sw * sh * slab_count) - area
-            efficiency = (area / (sw * sh * slab_count)) * 100 if slab_count > 0 else 0
-            
-            slab_outputs.append({
-                "slab": f"{sw}×{sh}",
-                "slab_size": (sw, sh),
-                "units": produced,
-                "cut_length": cut_length,
-                "area": area,
-                "waste_area": waste_area,
-                "efficiency": efficiency,
-                "slab_count": slab_count
-            })
-    
-    return slab_outputs
 
 # -----------------------------
 # UI Configuration
