@@ -299,24 +299,14 @@ st.markdown("""
         padding: 0rem !important;
     }
     
-    /* EXPANDER HEADERS - Try multiple selectors for larger font */
-    .stExpander summary {
-        font-size: 2rem !important;
-        font-weight: bold !important;
-    }
-    
-    .stExpander > div:first-child {
-        font-size: 2rem !important;
-        font-weight: bold !important;
-    }
-    
-    .stExpander label {
-        font-size: 2rem !important;
-        font-weight: bold !important;
-    }
-    
+    /* EXPANDER HEADERS - Try most common selectors for larger font */
     [data-testid="stExpander"] summary {
-        font-size: 2rem !important;
+        font-size: 1.5rem !important;
+        font-weight: bold !important;
+    }
+    
+    .streamlit-expanderHeader {
+        font-size: 1.5rem !important;
         font-weight: bold !important;
     }
     
@@ -665,18 +655,20 @@ if slab_sizes and st.session_state.units:
         # Detailed results
         for result in slab_outputs:
             with st.expander(f"{result['slab_count']}no. {result['slab']}mm Slab", expanded=True):
-                col1, col2 = st.columns(2)
-                col1.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
-                col2.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
+                col1, col2, col3 = st.columns(3)
                 
-                st.markdown("**Units Produced:**")
-                boq_data = []
-                for order in sorted(result["units"]):
-                    u = next(u for u in st.session_state.units if u["order"] == order)
-                    qty = result['units'][order]
-                    boq_data.append(f"• {qty}no. {u['width']}×{u['height']}mm")
+                with col1:
+                    st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 
-                st.markdown("\n".join(boq_data))
+                with col2:
+                    st.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
+                
+                with col3:
+                    st.markdown("**Units Produced:**")
+                    for order in sorted(result["units"]):
+                        u = next(u for u in st.session_state.units if u["order"] == order)
+                        qty = result['units'][order]
+                        st.markdown(f"• {qty}no. {u['width']}×{u['height']}mm")
         
         # Global summary
         if global_boqlines:
