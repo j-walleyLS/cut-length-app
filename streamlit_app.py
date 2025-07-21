@@ -345,8 +345,8 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 st.sidebar.markdown("### 📐 Available Slab Sizes")
 
 # Define slab sizes in specific order
-col1_slabs = [(600, 600), (900, 700), (900, 500), (2000, 500)]
-col2_slabs = [(900, 600), (1800, 700), (1500, 500)]
+col1_slabs = [(600, 600), (1800, 700), (900, 500), (2000, 500)]
+col2_slabs = [(900, 600), (1800, 900), (1500, 500)]
 
 # Create slab buttons with manual spacing
 col1, col2 = st.sidebar.columns(2)
