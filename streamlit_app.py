@@ -331,7 +331,7 @@ if "custom_slabs" not in st.session_state:
 if "selected_slabs" not in st.session_state:
     st.session_state.selected_slabs = []
 if "unit_input_rows" not in st.session_state:
-    st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
+    st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
 
 # -----------------------------
 # Main UI
@@ -455,11 +455,11 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     
     with col1:
         label_vis = "visible" if row_idx == 0 else "collapsed"
-        width = st.number_input("Width", min_value=1, value=row_data["width"], step=1, key=f"width_input_{row_idx}", label_visibility=label_vis)
+        width = st.number_input("Width", min_value=1, value=row_data["width"] if row_data["width"] != "" else 1, step=1, key=f"width_input_{row_idx}", label_visibility=label_vis)
     
     with col2:
         label_vis = "visible" if row_idx == 0 else "collapsed"
-        height = st.number_input("Height", min_value=1, value=row_data["height"], step=1, key=f"height_input_{row_idx}", label_visibility=label_vis)
+        height = st.number_input("Height", min_value=1, value=row_data["height"] if row_data["height"] != "" else 1, step=1, key=f"height_input_{row_idx}", label_visibility=label_vis)
     
     with col3:
         label_vis = "visible" if row_idx == 0 else "collapsed"
@@ -482,7 +482,7 @@ for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
     
     with col5:
         if row_idx == 0:
-            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
         
         if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:
             if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
@@ -511,7 +511,7 @@ st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=Tru
 col1, col2 = st.sidebar.columns(2)
 
 if col1.button("➕ Add Unit", type="primary", use_container_width=True):
-    st.session_state.unit_input_rows.append({"width": 300, "height": 200, "quantity": 1, "forced": "Any"})
+    st.session_state.unit_input_rows.append({"width": "", "height": "", "quantity": 1, "forced": "Any"})
     st.rerun()
 
 if col2.button("📝 Update List", type="secondary", use_container_width=True):
@@ -566,7 +566,7 @@ if st.session_state.units:
     st.sidebar.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
     if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
-        st.session_state.unit_input_rows = [{"width": 300, "height": 200, "quantity": 1, "forced": "Any"}]
+        st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
         st.rerun()
 
 # -----------------------------
