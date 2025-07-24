@@ -429,7 +429,7 @@ def create_slab_buttons(slab_list, category_name):
             st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
 
 # Create all slab button sections
-create_slab_buttons(paving_slabs, "Paving")
+create_slab_buttons(paving_slabs, "Paving/Slabs")
 create_slab_buttons(treads_slabs, "Treads")
 create_slab_buttons(italian_porcelain_slabs, "Italian Porcelain")
 
