@@ -413,8 +413,8 @@ def create_slab_buttons(slab_list, category_name):
                         st.session_state.selected_slabs.append(actual_size)
                     st.rerun()
         
-        # Add the same small spacing as before between button rows
-        st.sidebar.markdown("<div style='height: 0.1rem;'></div>", unsafe_allow_html=True)
+        # Add the same spacing as unit input rows between button rows
+        st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
 
 # Create all slab button sections
 create_slab_buttons(paving_slabs, "Paving")
