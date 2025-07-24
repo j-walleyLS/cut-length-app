@@ -344,46 +344,79 @@ st.markdown("*Optimize material cutting from various slab sizes*")
 # -----------------------------
 st.sidebar.markdown("### 📐 Available Slab Sizes")
 
-# Define slab sizes in specific order
-col1_slabs = [(600, 600), (1800, 700), (900, 500), (2000, 500)]
-col2_slabs = [(900, 600), (1800, 900), (1500, 500)]
+# Define slab sizes with categories - (display_size, actual_size, label)
+paving_slabs = [
+    ((600, 600), (600, 600), "600×600"),
+    ((900, 600), (900, 600), "900×600"), 
+    ((1800, 700), (1800, 700), "1800×700"),
+    ((1800, 900), (1800, 900), "1800×900")
+]
 
-# Create slab buttons with manual spacing
-col1, col2 = st.sidebar.columns(2)
+treads_slabs = [
+    ((900, 500), (900, 500), "900×500"),
+    ((1500, 500), (1500, 500), "1500×500"),
+    ((2000, 500), (2000, 500), "2000×500")
+]
 
-for slab in col1_slabs:
-    slab_key = f"{slab[0]}×{slab[1]}"
-    is_selected = slab in st.session_state.selected_slabs
+italian_porcelain_slabs = [
+    ((600, 600), (596, 596), "600×600\n(596×596)"),
+    ((900, 450), (897, 446), "900×450\n(897×446)"),
+    ((900, 600), (897, 596), "900×600\n(897×596)"),
+    ((800, 800), (794, 794), "800×800\n(794×794)"),
+    ((1200, 600), (1194, 596), "1200×600\n(1194×596)"),
+    ((1200, 1200), (1194, 1194), "1200×1200\n(1194×1194)")
+]
+
+# Create slab buttons with categories and two columns
+def create_slab_buttons(slab_list, category_name):
+    st.sidebar.markdown(f"**{category_name}**")
     
-    if col1.button(
-        f"{'✓ ' if is_selected else ''}{slab_key}",
-        key=f"slab_{slab}",
-        help=f"Click to {'remove' if is_selected else 'add'} {slab_key}mm slab",
-        type="primary" if is_selected else "secondary",
-        use_container_width=True
-    ):
-        if slab in st.session_state.selected_slabs:
-            st.session_state.selected_slabs.remove(slab)
-        else:
-            st.session_state.selected_slabs.append(slab)
-        st.rerun()
+    # Create buttons in pairs for 2-column layout
+    for i in range(0, len(slab_list), 2):
+        col1, col2 = st.sidebar.columns(2)
+        
+        # First button in pair
+        if i < len(slab_list):
+            display_size, actual_size, label = slab_list[i]
+            is_selected = actual_size in st.session_state.selected_slabs
+            
+            with col1:
+                if st.button(
+                    f"{'✓ ' if is_selected else ''}{label}",
+                    key=f"slab_{actual_size}",
+                    help=f"Click to {'remove' if is_selected else 'add'} {display_size[0]}×{display_size[1]}mm slab",
+                    type="primary" if is_selected else "secondary",
+                    use_container_width=True
+                ):
+                    if actual_size in st.session_state.selected_slabs:
+                        st.session_state.selected_slabs.remove(actual_size)
+                    else:
+                        st.session_state.selected_slabs.append(actual_size)
+                    st.rerun()
+        
+        # Second button in pair (if exists)
+        if i + 1 < len(slab_list):
+            display_size, actual_size, label = slab_list[i + 1]
+            is_selected = actual_size in st.session_state.selected_slabs
+            
+            with col2:
+                if st.button(
+                    f"{'✓ ' if is_selected else ''}{label}",
+                    key=f"slab_{actual_size}",
+                    help=f"Click to {'remove' if is_selected else 'add'} {display_size[0]}×{display_size[1]}mm slab",
+                    type="primary" if is_selected else "secondary",
+                    use_container_width=True
+                ):
+                    if actual_size in st.session_state.selected_slabs:
+                        st.session_state.selected_slabs.remove(actual_size)
+                    else:
+                        st.session_state.selected_slabs.append(actual_size)
+                    st.rerun()
 
-for slab in col2_slabs:
-    slab_key = f"{slab[0]}×{slab[1]}"
-    is_selected = slab in st.session_state.selected_slabs
-    
-    if col2.button(
-        f"{'✓ ' if is_selected else ''}{slab_key}",
-        key=f"slab_{slab}",
-        help=f"Click to {'remove' if is_selected else 'add'} {slab_key}mm slab",
-        type="primary" if is_selected else "secondary",
-        use_container_width=True
-    ):
-        if slab in st.session_state.selected_slabs:
-            st.session_state.selected_slabs.remove(slab)
-        else:
-            st.session_state.selected_slabs.append(slab)
-        st.rerun()
+# Create all slab button sections
+create_slab_buttons(paving_slabs, "Paving")
+create_slab_buttons(treads_slabs, "Treads") 
+create_slab_buttons(italian_porcelain_slabs, "Italian Porcelain")
 
 st.sidebar.markdown("---")
 
