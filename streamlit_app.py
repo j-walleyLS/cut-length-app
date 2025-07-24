@@ -419,10 +419,10 @@ def create_slab_buttons(slab_list, category_name):
 
 # Create all slab button sections
 create_slab_buttons(paving_slabs, "Paving")
-st.sidebar.markdown("<div style='height: 3rem;'></div>", unsafe_allow_html=True)  # Larger section spacing
+st.sidebar.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)  # No section spacing
 
 create_slab_buttons(treads_slabs, "Treads")
-st.sidebar.markdown("<div style='height: 3rem;'></div>", unsafe_allow_html=True)  # Larger section spacing
+st.sidebar.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)  # No section spacing
 
 create_slab_buttons(italian_porcelain_slabs, "Italian Porcelain")
 
