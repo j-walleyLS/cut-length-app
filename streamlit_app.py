@@ -437,7 +437,6 @@ st.sidebar.markdown("---")
 
 # Custom slab input
 st.sidebar.subheader("Custom Slab Sizes")
-st.sidebar.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
 
 if "custom_input" not in st.session_state:
     st.session_state.custom_input = ""
