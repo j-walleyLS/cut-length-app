@@ -286,6 +286,16 @@ st.markdown("""
         margin-bottom: 0.1rem !important;
     }
     
+    /* Remove gaps between slab sections */
+    .stSidebar .stMarkdown:has(strong) {
+        margin-bottom: -1rem !important;
+    }
+    
+    /* Tighten spacing around slab section headings */
+    .stSidebar .stMarkdown strong {
+        margin-bottom: 0rem !important;
+    }
+    
     /* Remove default spacing from other elements */
     .stSidebar .stNumberInput,
     .stSidebar .stSelectbox,
@@ -420,11 +430,7 @@ def create_slab_buttons(slab_list, category_name):
 
 # Create all slab button sections
 create_slab_buttons(paving_slabs, "Paving")
-st.sidebar.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)  # No section spacing
-
 create_slab_buttons(treads_slabs, "Treads")
-st.sidebar.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)  # No section spacing
-
 create_slab_buttons(italian_porcelain_slabs, "Italian Porcelain")
 
 st.sidebar.markdown("---")
