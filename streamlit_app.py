@@ -278,7 +278,7 @@ st.markdown("""
     .stSidebar .stMarkdown h3 {
         margin-top: 0rem !important;
         padding-top: 0rem !important;
-        margin-bottom: 1.2rem !important;
+        margin-bottom: 0rem !important;
     }
     
     /* SLAB BUTTONS - Give them small spacing */
