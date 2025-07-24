@@ -346,19 +346,8 @@ if "unit_input_rows" not in st.session_state:
 # -----------------------------
 # Main UI
 # -----------------------------
-# Create header with logo
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.title("🪚 Cut Length Optimiser")
-    st.markdown("*Optimize material cutting from various slab sizes*")
-with col2:
-    st.markdown("""
-    <div style="text-align: right; padding-top: 1rem;">
-        <img src="https://media.licdn.com/dms/image/v2/D4E0BAQHP523W42qnWw/company-logo_200_200/company-logo_200_200/0/1684478471407/london_stone_logo?e=2147483647&v=beta&t=dW-GcSLavPP7SD-qAqCyQgaH-LODRJqcoHyblQRHR9Q" 
-             style="height: 3rem; background: transparent;" 
-             alt="London Stone Logo"/>
-    </div>
-    """, unsafe_allow_html=True)
+st.title("🪚 Cut Length Optimiser")
+st.markdown("*Optimize material cutting from various slab sizes*")
 
 # -----------------------------
 # Sidebar - Slab Selection
