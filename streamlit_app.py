@@ -370,6 +370,7 @@ italian_porcelain_slabs = [
 # Create slab buttons with categories and two columns
 def create_slab_buttons(slab_list, category_name):
     st.sidebar.markdown(f"**{category_name}**")
+    st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)  # Space below header
     
     # Create buttons in pairs for 2-column layout
     for i in range(0, len(slab_list), 2):
