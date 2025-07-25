@@ -938,16 +938,76 @@ if uploaded_file is not None:
     if st.sidebar.button("Import from File", type="primary", use_container_width=True):
         imported_units = parse_uploaded_file(uploaded_file)
         if imported_units:
-            # Add imported units to session state
+            # First, consolidate any existing manual input rows
+            consolidated_units = {}
+            
+            # Add existing units from the list
+            for unit in st.session_state.units:
+                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
+                unit_key = (unit["width"], unit["height"], forced_key)
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": unit.get("forced_slabs", [])
+                    }
+            
+            # Add any units from manual input rows that haven't been added yet
+            for row_data in st.session_state.unit_input_rows:
+                if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                    forced_slabs = []
+                    if row_data["forced"] and row_data["forced"] != "Any":
+                        for slab in slab_sizes:
+                            if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                                forced_slabs = [slab]
+                                break
+                    
+                    forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                    unit_key = (row_data["width"], row_data["height"], forced_key)
+                    
+                    if unit_key in consolidated_units:
+                        consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                    else:
+                        consolidated_units[unit_key] = {
+                            "width": row_data["width"],
+                            "height": row_data["height"],
+                            "quantity": row_data["quantity"],
+                            "forced_slabs": forced_slabs
+                        }
+            
+            # Add imported units to consolidated list
             for unit in imported_units:
+                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": []
+                    }
+            
+            # Update the session state with all consolidated units
+            st.session_state.units = []
+            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
                 st.session_state.units.append({
-                    "width": unit["width"],
-                    "height": unit["height"],
-                    "quantity": unit["quantity"],
-                    "forced_slabs": [],
-                    "order": len(st.session_state.units)
+                    "width": unit_data["width"],
+                    "height": unit_data["height"],
+                    "quantity": unit_data["quantity"],
+                    "forced_slabs": unit_data["forced_slabs"],
+                    "order": i
                 })
-            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types!")
+            
+            # Clear manual input rows after successful import
+            st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+            
+            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
 
 # Text Area for Copy/Paste
@@ -962,16 +1022,76 @@ if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
         imported_units = parse_boq_text(bulk_text)
         if imported_units:
-            # Add imported units to session state
+            # First, consolidate any existing manual input rows and existing units
+            consolidated_units = {}
+            
+            # Add existing units from the list
+            for unit in st.session_state.units:
+                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
+                unit_key = (unit["width"], unit["height"], forced_key)
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": unit.get("forced_slabs", [])
+                    }
+            
+            # Add any units from manual input rows
+            for row_data in st.session_state.unit_input_rows:
+                if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                    forced_slabs = []
+                    if row_data["forced"] and row_data["forced"] != "Any":
+                        for slab in slab_sizes:
+                            if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                                forced_slabs = [slab]
+                                break
+                    
+                    forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                    unit_key = (row_data["width"], row_data["height"], forced_key)
+                    
+                    if unit_key in consolidated_units:
+                        consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                    else:
+                        consolidated_units[unit_key] = {
+                            "width": row_data["width"],
+                            "height": row_data["height"],
+                            "quantity": row_data["quantity"],
+                            "forced_slabs": forced_slabs
+                        }
+            
+            # Add imported units to consolidated list
             for unit in imported_units:
+                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": []
+                    }
+            
+            # Update the session state with all consolidated units
+            st.session_state.units = []
+            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
                 st.session_state.units.append({
-                    "width": unit["width"],
-                    "height": unit["height"],
-                    "quantity": unit["quantity"],
-                    "forced_slabs": [],
-                    "order": len(st.session_state.units)
+                    "width": unit_data["width"],
+                    "height": unit_data["height"],
+                    "quantity": unit_data["quantity"],
+                    "forced_slabs": unit_data["forced_slabs"],
+                    "order": i
                 })
-            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types!")
+            
+            # Clear manual input rows after successful import
+            st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+            
+            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
         else:
             st.sidebar.error("❌ No valid units found. Check your format.")
@@ -1048,6 +1168,7 @@ if col1.button("➕ Add Unit", type="primary", use_container_width=True):
     st.rerun()
 
 if col2.button("📝 Update List", type="secondary", use_container_width=True):
+    # Consolidate units from input rows
     consolidated_units = {}
     
     for row_data in st.session_state.unit_input_rows:
@@ -1072,6 +1193,7 @@ if col2.button("📝 Update List", type="secondary", use_container_width=True):
                     "forced_slabs": forced_slabs
                 }
     
+    # Update the units list with consolidated data
     st.session_state.units = []
     for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
         st.session_state.units.append({
