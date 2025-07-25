@@ -75,15 +75,39 @@ def parse_uploaded_file(uploaded_file):
             content = str(uploaded_file.read(), "utf-8")
             return parse_boq_text(content)
         elif uploaded_file.type == "application/pdf":
-            # PDF parsing would require additional libraries like PyPDF2 or pdfplumber
-            # For now, show a helpful message
-            st.error("PDF support requires additional setup. Please convert to text or use the text box for now.")
-            return []
+            try:
+                import pdfplumber
+                content = ""
+                with pdfplumber.open(uploaded_file) as pdf:
+                    for page in pdf.pages:
+                        page_text = page.extract_text()
+                        if page_text:
+                            content += page_text + "\n"
+                if content.strip():
+                    return parse_boq_text(content)
+                else:
+                    st.error("No text found in PDF. The PDF might contain only images.")
+                    return []
+            except ImportError:
+                st.error("PDF parsing requires 'pdfplumber'. Please install it: pip install pdfplumber")
+                return []
         elif uploaded_file.type.startswith("image/"):
-            # Image OCR would require libraries like pytesseract
-            # For now, show a helpful message
-            st.error("Image OCR support requires additional setup. Please convert to text or use the text box for now.")
-            return []
+            try:
+                import pytesseract
+                from PIL import Image
+                image = Image.open(uploaded_file)
+                content = pytesseract.image_to_string(image)
+                if content.strip():
+                    return parse_boq_text(content)
+                else:
+                    st.error("No text found in image. Please ensure the image contains readable text.")
+                    return []
+            except ImportError:
+                st.error("Image OCR requires 'pytesseract' and 'Pillow'. Please install them.")
+                return []
+            except Exception as e:
+                st.error(f"Error processing image: {str(e)}. Make sure tesseract is installed on your system.")
+                return []
         else:
             st.error("Unsupported file type. Please use .txt, .csv, .pdf, or image files.")
             return []
