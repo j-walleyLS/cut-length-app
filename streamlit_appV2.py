@@ -1152,14 +1152,14 @@ if "manual_input_enabled" not in st.session_state:
     st.session_state.manual_input_enabled = False
 
 # Add some spacing after the separator
-st.sidebar.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 
 # Create columns for header and toggle
 col1, col2 = st.sidebar.columns([4, 1])
 
 with col1:
-    # Use markdown for better control over spacing
-    st.markdown("### ✏️ Manual Input")
+    # Add padding to push the header down
+    st.markdown("<div style='padding-top: 0.5rem;'><h3 style='margin: 0;'>✏️ Manual Input</h3></div>", unsafe_allow_html=True)
 
 with col2:
     # No additional spacing needed - the toggle should align naturally
@@ -1188,13 +1188,6 @@ st.markdown("""
     
     .stToggle > label > div[data-checked="true"] {
         background-color: #2196F3 !important;
-    }
-    
-    /* Fine-tune toggle alignment */
-    div[data-testid="column"]:has(.stToggle) {
-        display: flex;
-        align-items: center;
-        padding-top: 0.3rem;
     }
 </style>
 """, unsafe_allow_html=True)
