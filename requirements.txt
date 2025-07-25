@@ -1,1 +1,2 @@
 streamlit
+pdfplumber==0.7.6
