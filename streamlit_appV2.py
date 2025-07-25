@@ -889,18 +889,15 @@ custom_input = st.sidebar.text_input(
 )
 
 # Process custom slab input
-if custom_input != st.session_state.custom_input:
-    st.session_state.custom_input = custom_input
-    
-    if custom_input.strip() and 'x' in custom_input.lower():
-        try:
-            new_slab = parse_dimensions(custom_input)
-            if new_slab not in st.session_state.custom_slabs:
-                st.session_state.custom_slabs.append(new_slab)
-                st.session_state.custom_input = ""
-                st.rerun()
-        except Exception as e:
-            st.sidebar.error("❌ Invalid format. Use: 800x400")
+if custom_input and custom_input.strip() and 'x' in custom_input.lower():
+    try:
+        new_slab = parse_dimensions(custom_input)
+        if new_slab not in st.session_state.custom_slabs:
+            st.session_state.custom_slabs.append(new_slab)
+            st.session_state.custom_input = ""
+            st.rerun()
+    except Exception:
+        pass  # Silently ignore invalid format
 
 # Display custom slabs
 if st.session_state.custom_slabs:
@@ -1434,7 +1431,7 @@ if slab_sizes and st.session_state.units:
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    st.metric("No. of {'Scants' if result.get('is_scant') else 'Slabs'} Used", result['slab_count'])
+                    st.metric(f"No. of {'Scants' if result.get('is_scant') else 'Slabs'} Used", result['slab_count'])
                 
                 with col2:
                     if result.get('is_scant'):
@@ -1443,7 +1440,7 @@ if slab_sizes and st.session_state.units:
                         st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 
                 with col3:
-                    st.metric("{'Material' if result.get('is_scant') else 'Total'} Area", f"{result['area'] / 1e6:.2f} m²")
+                    st.metric(f"{'Material' if result.get('is_scant') else 'Total'} Area", f"{result['area'] / 1e6:.2f} m²")
                 
                 with col4:
                     st.markdown("**Units Produced:**")
