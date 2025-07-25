@@ -41,9 +41,26 @@ def parse_boq_text(text):
         line = line.strip()
         if not line:
             continue
+        
+        # Skip lines that are clearly not BOQ data
+        skip_patterns = [
+            r'(?i)from:', r'(?i)tel:', r'(?i)ref:', r'(?i)needed',
+            r'(?i)asap', r'(?i)cheer', r'(?i)london', r'(?i)stone',
+            r'(?i)britannia', r'(?i)dear', r'(?i)please', r'(?i)thank'
+        ]
+        
+        skip_line = False
+        for pattern in skip_patterns:
+            if re.search(pattern, line):
+                skip_line = True
+                break
+        
+        if skip_line:
+            continue
             
         # Various regex patterns to match different formats
         patterns = [
+            r'x(\d+)\s+(\d+)\s*[×x]\s*(\d+)',  # x1 1650×560 (with space)
             r'x(\d+)\s*(\d+)\s*[×x]\s*(\d+)',  # x1 1650×560
             r'(\d+)\s*x\s*(\d+)\s*[×x]\s*(\d+)',  # 1x 1650×560
             r'(\d+)\s*no\.?\s*(\d+)\s*[×x]\s*(\d+)',  # 1 no. 1650×560
@@ -70,12 +87,18 @@ def parse_boq_text(text):
                     continue
                 
                 try:
-                    units.append({
-                        'width': int(width),
-                        'height': int(height),
-                        'quantity': int(qty)
-                    })
-                    break
+                    # Validate dimensions are reasonable (between 10mm and 10000mm)
+                    w = int(width)
+                    h = int(height)
+                    q = int(qty)
+                    
+                    if 10 <= w <= 10000 and 10 <= h <= 10000 and q > 0:
+                        units.append({
+                            'width': w,
+                            'height': h,
+                            'quantity': q
+                        })
+                        break
                 except ValueError:
                     continue
     
