@@ -1,2 +1,3 @@
 streamlit
 pdfplumber==0.7.6
+requests==2.31.0
