@@ -967,141 +967,65 @@ uploaded_file = st.sidebar.file_uploader(
     help="Drag and drop your bill of quantities file (.txt, .csv, .pdf, or image)"
 )
 
-# Create a placeholder for extracted text display
-if 'show_extracted_text' not in st.session_state:
-    st.session_state.show_extracted_text = ""
-
 if uploaded_file is not None:
-    col1, col2 = st.sidebar.columns(2)
-    
-    with col1:
-        if st.button("📄 Extract Text", type="secondary", use_container_width=True, help="Extract text to review/edit"):
-            # Reset the file pointer
-            uploaded_file.seek(0)
+    if st.sidebar.button("📄 Extract Text", type="primary", use_container_width=True):
+        # Reset the file pointer to the beginning
+        uploaded_file.seek(0)
+        
+        # Extract text based on file type
+        extracted_text = None
+        
+        if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
+            pdf_bytes = uploaded_file.read()
+            with st.spinner("📄 Extracting text from PDF..."):
+                progress_bar = st.progress(0)
+                
+                def update_progress(current, total):
+                    progress_bar.progress(current / total)
+                
+                extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                progress_bar.empty()
+                
+        elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
+            image_bytes = uploaded_file.read()
+            with st.spinner("🖼️ Extracting text from image..."):
+                extracted_text = extract_text_from_image_ocr(image_bytes)
+                
+        elif uploaded_file.type in ["text/plain", "text/csv"]:
+            extracted_text = str(uploaded_file.read(), "utf-8")
+        
+        if extracted_text:
+            # Parse the extracted text
+            units = parse_boq_text(extracted_text)
             
-            # Extract text based on file type
-            extracted_text = None
-            
-            if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
-                pdf_bytes = uploaded_file.read()
-                with st.spinner("📄 Extracting text from PDF..."):
-                    progress_bar = st.progress(0)
-                    
-                    def update_progress(current, total):
-                        progress_bar.progress(current / total)
-                    
-                    extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
-                    progress_bar.empty()
-                    
-            elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
-                image_bytes = uploaded_file.read()
-                with st.spinner("🖼️ Extracting text from image..."):
-                    extracted_text = extract_text_from_image_ocr(image_bytes)
-                    
-            elif uploaded_file.type in ["text/plain", "text/csv"]:
-                extracted_text = str(uploaded_file.read(), "utf-8")
-            
-            if extracted_text:
-                # Show debug expander with extracted text
-                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=True):
-                    st.text_area("Raw OCR output:", extracted_text, height=200)
-                
-                # Parse to see if we can format it nicely
-                units = parse_boq_text(extracted_text)
-                if units:
-                    # Format as BOQ lines
-                    boq_lines = []
-                    for unit in units:
-                        boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                    formatted_text = '\n'.join(boq_lines)
-                    st.session_state.show_extracted_text = formatted_text
-                    st.sidebar.success(f"✅ Found {len(units)} units! Review below and click 'Import from Text'")
-                else:
-                    # Show raw text if no units found
-                    st.session_state.show_extracted_text = extracted_text
-                    st.sidebar.warning("No BOQ patterns found. Showing raw text for manual formatting.")
-                
-                st.rerun()
-    
-    with col2:
-        if st.button("⚡ Quick Import", type="primary", use_container_width=True, help="Import directly without preview"):
-            # Reset the file pointer
-            uploaded_file.seek(0)
-            
-            # Process the file directly
-            imported_units = parse_uploaded_file(uploaded_file)
-            
-            if imported_units:
-                # Consolidate and add units
-                consolidated_units = {}
-                
-                # Add existing units
-                for unit in st.session_state.units:
-                    forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
-                    unit_key = (unit["width"], unit["height"], forced_key)
-                    
-                    if unit_key in consolidated_units:
-                        consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                    else:
-                        consolidated_units[unit_key] = {
-                            "width": unit["width"],
-                            "height": unit["height"],
-                            "quantity": unit["quantity"],
-                            "forced_slabs": unit.get("forced_slabs", [])
-                        }
-                
-                # Add imported units
-                for unit in imported_units:
-                    unit_key = (unit["width"], unit["height"], None)
-                    
-                    if unit_key in consolidated_units:
-                        consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                    else:
-                        consolidated_units[unit_key] = {
-                            "width": unit["width"],
-                            "height": unit["height"],
-                            "quantity": unit["quantity"],
-                            "forced_slabs": []
-                        }
-                
-                # Update units list
-                st.session_state.units = []
-                for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
-                    st.session_state.units.append({
-                        "width": unit_data["width"],
-                        "height": unit_data["height"],
-                        "quantity": unit_data["quantity"],
-                        "forced_slabs": unit_data["forced_slabs"],
-                        "order": i
-                    })
-                
-                # Clear the text area content
-                st.session_state.boq_text_content = ""
-                
-                st.sidebar.success(f"✅ Imported {len(imported_units)} unit types!")
-                st.rerun()
+            if units:
+                # Format as BOQ lines
+                boq_lines = []
+                for unit in units:
+                    boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                formatted_text = '\n'.join(boq_lines)
+                st.session_state.boq_extracted_content = formatted_text
+                st.sidebar.success(f"✅ Found {len(units)} units!")
             else:
-                st.sidebar.error("❌ No valid units found in the file.")
+                # Store raw text if no units found
+                st.session_state.boq_extracted_content = extracted_text
+                st.sidebar.warning("No BOQ patterns found in extracted text.")
+            
+            st.rerun()
 
-# Text Area for Copy/Paste - Now shows extracted text when available
-if 'show_extracted_text' in st.session_state and st.session_state.show_extracted_text:
-    # When we have extracted text, show it
-    bulk_text = st.sidebar.text_area(
-        "Or Paste BOQ Text",
-        value=st.session_state.show_extracted_text,
-        placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
-        height=120,
-        help="Review the extracted text and click 'Import from Text' to process"
-    )
-else:
-    # Default empty text area
-    bulk_text = st.sidebar.text_area(
-        "Or Paste BOQ Text",
-        value="",
-        placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
-        height=120,
-        help="Paste your BOQ text or use 'Extract Text' button above"
-    )
+# Show extracted text in a code block if available
+if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
+    st.sidebar.markdown("**📋 Extracted BOQ Text:**")
+    st.sidebar.code(st.session_state.boq_extracted_content, language=None)
+    st.sidebar.info("Copy the text above and paste it in the box below")
+
+# Text Area for manual input
+bulk_text = st.sidebar.text_area(
+    "Or Paste BOQ Text",
+    placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
+    height=120,
+    help="Paste your BOQ text here"
+)
 
 if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
@@ -1178,7 +1102,7 @@ if bulk_text.strip():
             st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
             
             # Clear the text area content
-            st.session_state.boq_display_text = ""
+            st.session_state.boq_extracted_content = ""
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
