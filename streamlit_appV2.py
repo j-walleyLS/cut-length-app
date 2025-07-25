@@ -341,28 +341,9 @@ def parse_uploaded_file(uploaded_file):
                     progress_bar.empty()
                 
                 if extracted_text:
-                    # Show what was extracted for debugging in the sidebar
-                    with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
-                        st.text_area("Raw OCR output:", extracted_text, height=200)
-                    
-                    # Parse the extracted text
-                    units = parse_boq_text(extracted_text)
-                    
-                    if units:
-                        st.sidebar.success(f"✅ Found {len(units)} unit types!")
-                        return units
-                    else:
-                        st.sidebar.warning("No valid units found in the extracted text.")
-                        st.sidebar.info("The OCR extracted text but couldn't find BOQ patterns.")
-                        
-                        # Show manual input helper
-                        st.sidebar.markdown("**Please paste this format in the BOQ text box:**")
-                        st.sidebar.code("""x1 1650×560
-x1 1650×150
-x1 2000×850
-x5 2000×350
-x6 2000×150""")
-                        return []
+                    # Just return the raw extracted text without showing messages
+                    # The parsing will happen when the user clicks Extract Text or Quick Import
+                    return []
                 else:
                     st.sidebar.error("Failed to extract text from PDF")
                     return []
@@ -1021,6 +1002,10 @@ if uploaded_file is not None:
                 extracted_text = str(uploaded_file.read(), "utf-8")
             
             if extracted_text:
+                # Show debug expander with extracted text
+                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=True):
+                    st.text_area("Raw OCR output:", extracted_text, height=200)
+                
                 # Parse to see if we can format it nicely
                 units = parse_boq_text(extracted_text)
                 if units:
@@ -1028,12 +1013,14 @@ if uploaded_file is not None:
                     boq_lines = []
                     for unit in units:
                         boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                    st.session_state.show_extracted_text = '\n'.join(boq_lines)
+                    formatted_text = '\n'.join(boq_lines)
+                    st.session_state.show_extracted_text = formatted_text
+                    st.sidebar.success(f"✅ Found {len(units)} units! Review below and click 'Import from Text'")
                 else:
                     # Show raw text if no units found
                     st.session_state.show_extracted_text = extracted_text
+                    st.sidebar.warning("No BOQ patterns found. Showing raw text for manual formatting.")
                 
-                st.sidebar.success("✅ Text extracted! Review below and click 'Import from Text'")
                 st.rerun()
     
     with col2:
@@ -1097,14 +1084,24 @@ if uploaded_file is not None:
                 st.sidebar.error("❌ No valid units found in the file.")
 
 # Text Area for Copy/Paste - Now shows extracted text when available
-bulk_text = st.sidebar.text_area(
-    "Or Paste BOQ Text",
-    value=st.session_state.show_extracted_text,
-    placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
-    height=120,
-    help="Paste your BOQ text or use 'Extract Text' button above",
-    key="boq_text_area"
-)
+if 'show_extracted_text' in st.session_state and st.session_state.show_extracted_text:
+    # When we have extracted text, show it
+    bulk_text = st.sidebar.text_area(
+        "Or Paste BOQ Text",
+        value=st.session_state.show_extracted_text,
+        placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
+        height=120,
+        help="Review the extracted text and click 'Import from Text' to process"
+    )
+else:
+    # Default empty text area
+    bulk_text = st.sidebar.text_area(
+        "Or Paste BOQ Text",
+        value="",
+        placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
+        height=120,
+        help="Paste your BOQ text or use 'Extract Text' button above"
+    )
 
 if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
