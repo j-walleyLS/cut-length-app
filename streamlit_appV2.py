@@ -314,53 +314,20 @@ def parse_uploaded_file(uploaded_file):
                     progress_bar.empty()
                 
                 if extracted_text:
-                    st.success("✅ Text extracted from PDF!")
+                    # Don't show success message here, just process silently
                     
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
                     if units:
-                        # Automatically add units to the session state
-                        for unit in units:
-                            st.session_state.units.append({
-                                "width": unit["width"],
-                                "height": unit["height"],
-                                "quantity": unit["quantity"],
-                                "forced_slabs": [],
-                                "order": len(st.session_state.units)
-                            })
-                        
-                        st.success(f"✅ Found and added {len(units)} unit types to the sidebar list!")
+                        # Units found - they will be added via the import process
                         return units
                     else:
-                        st.warning("No valid units found in the extracted text. You can manually enter them below.")
-                        
-                        # Allow manual editing without showing extracted text
-                        edited_text = st.text_area(
-                            "Enter your BOQ data:",
-                            value="",  # Start with empty text area
-                            height=200,
-                            placeholder="Enter data in format: x1 1650×560",
-                            help="Use formats like: 'x1 1650×560' or '1x 1650×560' or '1 no. 1650×560'"
-                        )
-                        if st.button("Add Units"):
-                            units = parse_boq_text(edited_text)
-                            if units:
-                                # Add parsed units to session state
-                                for unit in units:
-                                    st.session_state.units.append({
-                                        "width": unit["width"],
-                                        "height": unit["height"],
-                                        "quantity": unit["quantity"],
-                                        "forced_slabs": [],
-                                        "order": len(st.session_state.units)
-                                    })
-                                st.success(f"✅ Added {len(units)} unit types to sidebar list!")
-                                return units
-                            else:
-                                st.error("No valid units found. Please check the format.")
-                    
-                    return units
+                        # No units found - just return empty
+                        return []
+                else:
+                    st.error("Failed to extract text from PDF")
+                    return []
                 else:
                     st.error("Failed to extract text from PDF")
                     return []
@@ -766,6 +733,8 @@ if "unit_input_rows" not in st.session_state:
     st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
 if "selected_slab_info" not in st.session_state:
     st.session_state.selected_slab_info = {}  # Store complete slab info
+if "manual_input_enabled" not in st.session_state:
+    st.session_state.manual_input_enabled = False  # Default to OFF
 
 # -----------------------------
 # Main UI
@@ -1000,7 +969,22 @@ if uploaded_file is not None:
     if st.sidebar.button("Import from File", type="primary", use_container_width=True):
         imported_units = parse_uploaded_file(uploaded_file)
         if imported_units:
-            # First, consolidate any existing manual input rows
+            # Clear existing manual input rows
+            st.session_state.unit_input_rows = []
+            
+            # Add each imported unit as a row in manual input
+            for unit in imported_units:
+                st.session_state.unit_input_rows.append({
+                    "width": unit["width"],
+                    "height": unit["height"],
+                    "quantity": unit["quantity"],
+                    "forced": "Any"
+                })
+            
+            # Enable manual input section to show the imported units
+            st.session_state.manual_input_enabled = True
+            
+            # Now consolidate and update the units list
             consolidated_units = {}
             
             # Add existing units from the list
@@ -1018,7 +1002,7 @@ if uploaded_file is not None:
                         "forced_slabs": unit.get("forced_slabs", [])
                     }
             
-            # Add any units from manual input rows that haven't been added yet
+            # Add the new imported units
             for row_data in st.session_state.unit_input_rows:
                 if row_data["width"] and row_data["height"] and row_data["quantity"]:
                     forced_slabs = []
@@ -1041,20 +1025,6 @@ if uploaded_file is not None:
                             "forced_slabs": forced_slabs
                         }
             
-            # Add imported units to consolidated list
-            for unit in imported_units:
-                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
-                
-                if unit_key in consolidated_units:
-                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                else:
-                    consolidated_units[unit_key] = {
-                        "width": unit["width"],
-                        "height": unit["height"],
-                        "quantity": unit["quantity"],
-                        "forced_slabs": []
-                    }
-            
             # Update the session state with all consolidated units
             st.session_state.units = []
             for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
@@ -1065,9 +1035,6 @@ if uploaded_file is not None:
                     "forced_slabs": unit_data["forced_slabs"],
                     "order": i
                 })
-            
-            # Clear manual input rows after successful import
-            st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
@@ -1161,9 +1128,7 @@ if bulk_text.strip():
 st.sidebar.markdown("---")
 
 # Manual Input Section
-# Initialize state
-if "manual_input_enabled" not in st.session_state:
-    st.session_state.manual_input_enabled = False
+# Initialize state - already done above
 
 # Add some spacing after the separator
 st.sidebar.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
