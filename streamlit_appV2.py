@@ -316,16 +316,10 @@ def parse_uploaded_file(uploaded_file):
                 if extracted_text:
                     st.success("✅ Text extracted from PDF!")
                     
-                    # Show extracted text in an expander for review
-                    with st.expander("📝 Review extracted text", expanded=False):
-                        st.text_area("Extracted content:", extracted_text, height=200)
-                    
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
                     if units:
-                        st.success(f"✅ Found {len(units)} unit types in the PDF - automatically added to list!")
-                        
                         # Automatically add units to the session state
                         for unit in units:
                             st.session_state.units.append({
@@ -336,31 +330,20 @@ def parse_uploaded_file(uploaded_file):
                                 "order": len(st.session_state.units)
                             })
                         
-                        # Show what was added
-                        st.info("**Added to unit list:**")
-                        for unit in units:
-                            st.write(f"• {unit['quantity']}x {unit['width']}×{unit['height']}")
-                        
+                        st.success(f"✅ Found and added {len(units)} unit types to the sidebar list!")
                         return units
                     else:
-                        st.warning("No valid units found in the extracted text.")
-                        st.info("**Based on your PDF, try entering your data like this:**")
-                        st.code("""x1 1650×560
-x1 1650×150
-x1 2000×850
-x5 2000×350
-x6 2000×150""")
+                        st.warning("No valid units found in the extracted text. You can manually enter them below.")
                         
-                        # Allow manual editing
-                        st.markdown("**Or edit the extracted text below:**")
+                        # Allow manual editing without showing extracted text
                         edited_text = st.text_area(
-                            "Edit or paste your BOQ data:",
-                            value=extracted_text if extracted_text else "",
+                            "Enter your BOQ data:",
+                            value="",  # Start with empty text area
                             height=200,
                             placeholder="Enter data in format: x1 1650×560",
                             help="Use formats like: 'x1 1650×560' or '1x 1650×560' or '1 no. 1650×560'"
                         )
-                        if st.button("Parse edited text"):
+                        if st.button("Add Units"):
                             units = parse_boq_text(edited_text)
                             if units:
                                 # Add parsed units to session state
@@ -372,10 +355,10 @@ x6 2000×150""")
                                         "forced_slabs": [],
                                         "order": len(st.session_state.units)
                                     })
-                                st.success(f"✅ Added {len(units)} unit types to list!")
+                                st.success(f"✅ Added {len(units)} unit types to sidebar list!")
                                 return units
                             else:
-                                st.error("Still couldn't parse the data. Please check the format.")
+                                st.error("No valid units found. Please check the format.")
                     
                     return units
                 else:
