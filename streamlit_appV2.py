@@ -986,139 +986,69 @@ uploaded_file = st.sidebar.file_uploader(
     help="Drag and drop your bill of quantities file (.txt, .csv, .pdf, or image)"
 )
 
-# Initialize extracted_text_display at the module level
-if 'extracted_text_display' not in st.session_state:
-    st.session_state.extracted_text_display = ""
-
 if uploaded_file is not None:
     if st.sidebar.button("Import from File", type="primary", use_container_width=True):
         # Reset the file pointer to the beginning
         uploaded_file.seek(0)
         
-        # First, try to extract text from the file
-        if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
-            pdf_bytes = uploaded_file.read()
-            with st.spinner("📄 Processing PDF with OCR..."):
-                progress_bar = st.progress(0)
-                
-                def update_progress(current, total):
-                    progress_bar.progress(current / total)
-                
-                extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
-                progress_bar.empty()
-                
-            if extracted_text:
-                # Store the extracted text
-                st.session_state.extracted_text_display = extracted_text
-                # Debug: Show what we're storing
-                st.sidebar.info(f"📄 Storing {len(extracted_text)} characters of extracted text")
-                st.sidebar.text(f"First 100 chars: {extracted_text[:100]}...")
-                st.rerun()
+        # Process the file directly
+        imported_units = parse_uploaded_file(uploaded_file)
         
-        elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
-            image_bytes = uploaded_file.read()
-            with st.spinner("🖼️ Processing image with OCR..."):
-                extracted_text = extract_text_from_image_ocr(image_bytes)
+        if imported_units:
+            # First, consolidate any existing units
+            consolidated_units = {}
             
-            if extracted_text:
-                # Store the extracted text
-                st.session_state.extracted_text_display = extracted_text
-                # Debug: Show what we're storing
-                st.sidebar.info(f"🖼️ Storing {len(extracted_text)} characters of extracted text")
-                st.sidebar.text(f"First 100 chars: {extracted_text[:100]}...")
-                st.rerun()
-        
-        # If not PDF/image or OCR failed, process normally
-        else:
-            imported_units = parse_uploaded_file(uploaded_file)
-            if imported_units:
-                # Create BOQ text from imported units
-                boq_text_lines = []
-                for unit in imported_units:
-                    boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+            # Add existing units from the list
+            for unit in st.session_state.units:
+                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
+                unit_key = (unit["width"], unit["height"], forced_key)
                 
-                # Store the formatted text
-                st.session_state.extracted_text_display = '\n'.join(boq_text_lines)
-                
-                # Process the units directly
-                # Clear existing manual input rows
-                st.session_state.unit_input_rows = []
-                
-                # Add each imported unit as a row in manual input
-                for unit in imported_units:
-                    st.session_state.unit_input_rows.append({
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
                         "width": unit["width"],
                         "height": unit["height"],
                         "quantity": unit["quantity"],
-                        "forced": "Any"
-                    })
+                        "forced_slabs": unit.get("forced_slabs", [])
+                    }
+            
+            # Add imported units to consolidated list
+            for unit in imported_units:
+                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
                 
-                # Enable manual input section to show the imported units
-                st.session_state.manual_input_enabled = True
-                
-                # Now consolidate and update the units list automatically
-                consolidated_units = {}
-                
-                # Add existing units from the list
-                for unit in st.session_state.units:
-                    forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
-                    unit_key = (unit["width"], unit["height"], forced_key)
-                    
-                    if unit_key in consolidated_units:
-                        consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                    else:
-                        consolidated_units[unit_key] = {
-                            "width": unit["width"],
-                            "height": unit["height"],
-                            "quantity": unit["quantity"],
-                            "forced_slabs": unit.get("forced_slabs", [])
-                        }
-                
-                # Add the new imported units
-                for row_data in st.session_state.unit_input_rows:
-                    if row_data["width"] and row_data["height"] and row_data["quantity"]:
-                        forced_slabs = []
-                        if row_data["forced"] and row_data["forced"] != "Any":
-                            for slab in slab_sizes:
-                                if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
-                                    forced_slabs = [slab]
-                                    break
-                        
-                        forced_key = tuple(forced_slabs[0]) if forced_slabs else None
-                        unit_key = (row_data["width"], row_data["height"], forced_key)
-                        
-                        if unit_key in consolidated_units:
-                            consolidated_units[unit_key]["quantity"] += row_data["quantity"]
-                        else:
-                            consolidated_units[unit_key] = {
-                                "width": row_data["width"],
-                                "height": row_data["height"],
-                                "quantity": row_data["quantity"],
-                                "forced_slabs": forced_slabs
-                            }
-                
-                # Update the session state with all consolidated units
-                st.session_state.units = []
-                for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
-                    st.session_state.units.append({
-                        "width": unit_data["width"],
-                        "height": unit_data["height"],
-                        "quantity": unit_data["quantity"],
-                        "forced_slabs": unit_data["forced_slabs"],
-                        "order": i
-                    })
-                
-                st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
-                st.rerun()
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": []
+                    }
+            
+            # Update the session state with all consolidated units
+            st.session_state.units = []
+            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+                st.session_state.units.append({
+                    "width": unit_data["width"],
+                    "height": unit_data["height"],
+                    "quantity": unit_data["quantity"],
+                    "forced_slabs": unit_data["forced_slabs"],
+                    "order": i
+                })
+            
+            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types directly from file!")
+            st.rerun()
+        else:
+            st.sidebar.error("❌ No valid units found in the file. Please check the format.")
 
-# Text Area for Copy/Paste - Remove key parameter entirely
+# Text Area for Copy/Paste - Keep it simple for manual input only
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    value=st.session_state.get('extracted_text_display', ''),
-    placeholder="x1 1650×560",
+    placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
     help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560"
-    # NO KEY PARAMETER - manage through value only
 )
 
 if bulk_text.strip():
