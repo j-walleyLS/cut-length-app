@@ -324,7 +324,24 @@ def parse_uploaded_file(uploaded_file):
                     units = parse_boq_text(extracted_text)
                     
                     if units:
-                        st.info(f"Found {len(units)} unit types in the PDF")
+                        st.success(f"✅ Found {len(units)} unit types in the PDF - automatically added to list!")
+                        
+                        # Automatically add units to the session state
+                        for unit in units:
+                            st.session_state.units.append({
+                                "width": unit["width"],
+                                "height": unit["height"],
+                                "quantity": unit["quantity"],
+                                "forced_slabs": [],
+                                "order": len(st.session_state.units)
+                            })
+                        
+                        # Show what was added
+                        st.info("**Added to unit list:**")
+                        for unit in units:
+                            st.write(f"• {unit['quantity']}x {unit['width']}×{unit['height']}")
+                        
+                        return units
                     else:
                         st.warning("No valid units found in the extracted text.")
                         st.info("**Based on your PDF, try entering your data like this:**")
@@ -346,6 +363,16 @@ x6 2000×150""")
                         if st.button("Parse edited text"):
                             units = parse_boq_text(edited_text)
                             if units:
+                                # Add parsed units to session state
+                                for unit in units:
+                                    st.session_state.units.append({
+                                        "width": unit["width"],
+                                        "height": unit["height"],
+                                        "quantity": unit["quantity"],
+                                        "forced_slabs": [],
+                                        "order": len(st.session_state.units)
+                                    })
+                                st.success(f"✅ Added {len(units)} unit types to list!")
                                 return units
                             else:
                                 st.error("Still couldn't parse the data. Please check the format.")
@@ -1013,7 +1040,7 @@ if uploaded_file is not None:
 # Text Area for Copy/Paste
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
+    placeholder="x1 1650×560",
     height=120,
     help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560"
 )
@@ -1101,110 +1128,121 @@ st.sidebar.markdown("---")
 # Manual Input Section
 st.sidebar.subheader("✏️ Manual Input")
 
-# Show input rows
-rows_to_remove = []
-for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
-    col1, col2, col3, col4, col5 = st.sidebar.columns([1, 1, 0.7, 1.5, 0.4])
-    
-    with col1:
-        label_vis = "visible" if row_idx == 0 else "collapsed"
-        width = st.number_input("Width", min_value=1, value=row_data["width"] if row_data["width"] != "" else 1, step=1, key=f"width_input_{row_idx}", label_visibility=label_vis)
-    
-    with col2:
-        label_vis = "visible" if row_idx == 0 else "collapsed"
-        height = st.number_input("Height", min_value=1, value=row_data["height"] if row_data["height"] != "" else 1, step=1, key=f"height_input_{row_idx}", label_visibility=label_vis)
-    
-    with col3:
-        label_vis = "visible" if row_idx == 0 else "collapsed"
-        quantity = st.number_input("Qty", min_value=1, value=row_data["quantity"], step=1, key=f"quantity_input_{row_idx}", label_visibility=label_vis)
-    
-    with col4:
-        slab_options = ["Any"] + [f"{s[0]}×{s[1]}" for s in slab_sizes] if slab_sizes else ["Any"]
-        current_index = 0
-        if row_data["forced"] in slab_options:
-            current_index = slab_options.index(row_data["forced"])
+# Add toggle for manual input
+if "manual_input_enabled" not in st.session_state:
+    st.session_state.manual_input_enabled = False
+
+st.session_state.manual_input_enabled = st.sidebar.checkbox(
+    "Enable Manual Input", 
+    value=st.session_state.manual_input_enabled,
+    help="Toggle to show/hide manual input fields"
+)
+
+if st.session_state.manual_input_enabled:
+    # Show input rows
+    rows_to_remove = []
+    for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
+        col1, col2, col3, col4, col5 = st.sidebar.columns([1, 1, 0.7, 1.5, 0.4])
         
-        label_vis = "visible" if row_idx == 0 else "collapsed"
-        forced = st.selectbox(
-            "Force Cutting From",
-            slab_options,
-            index=current_index,
-            key=f"forced_input_{row_idx}",
-            label_visibility=label_vis
-        )
-    
-    with col5:
-        if row_idx == 0:
-            st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        with col1:
+            label_vis = "visible" if row_idx == 0 else "collapsed"
+            width = st.number_input("Width", min_value=1, value=row_data["width"] if row_data["width"] != "" else 1, step=1, key=f"width_input_{row_idx}", label_visibility=label_vis)
         
-        if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:
-            if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
-                rows_to_remove.append(row_idx)
+        with col2:
+            label_vis = "visible" if row_idx == 0 else "collapsed"
+            height = st.number_input("Height", min_value=1, value=row_data["height"] if row_data["height"] != "" else 1, step=1, key=f"height_input_{row_idx}", label_visibility=label_vis)
+        
+        with col3:
+            label_vis = "visible" if row_idx == 0 else "collapsed"
+            quantity = st.number_input("Qty", min_value=1, value=row_data["quantity"], step=1, key=f"quantity_input_{row_idx}", label_visibility=label_vis)
+        
+        with col4:
+            slab_options = ["Any"] + [f"{s[0]}×{s[1]}" for s in slab_sizes] if slab_sizes else ["Any"]
+            current_index = 0
+            if row_data["forced"] in slab_options:
+                current_index = slab_options.index(row_data["forced"])
+            
+            label_vis = "visible" if row_idx == 0 else "collapsed"
+            forced = st.selectbox(
+                "Force Cutting From",
+                slab_options,
+                index=current_index,
+                key=f"forced_input_{row_idx}",
+                label_visibility=label_vis
+            )
+        
+        with col5:
+            if row_idx == 0:
+                st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+            
+            if len(st.session_state.unit_input_rows) > 1 or row_idx > 0:
+                if st.button("×", key=f"remove_row_{row_idx}", help="Remove this row"):
+                    rows_to_remove.append(row_idx)
+        
+        # Add same spacing as slab buttons between rows
+        st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+        
+        st.session_state.unit_input_rows[row_idx] = {
+            "width": width,
+            "height": height,
+            "quantity": quantity,
+            "forced": forced
+        }
     
-    # Add same spacing as slab buttons between rows
+    # Remove rows
+    if rows_to_remove:
+        for row_idx in reversed(rows_to_remove):
+            if row_idx < len(st.session_state.unit_input_rows):
+                del st.session_state.unit_input_rows[row_idx]
+        st.rerun()
+    
+    # Buttons with same spacing as input rows
     st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     
-    st.session_state.unit_input_rows[row_idx] = {
-        "width": width,
-        "height": height,
-        "quantity": quantity,
-        "forced": forced
-    }
-
-# Remove rows
-if rows_to_remove:
-    for row_idx in reversed(rows_to_remove):
-        if row_idx < len(st.session_state.unit_input_rows):
-            del st.session_state.unit_input_rows[row_idx]
-    st.rerun()
-
-# Buttons with same spacing as input rows
-st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
-
-col1, col2 = st.sidebar.columns(2)
-
-if col1.button("➕ Add Unit", type="primary", use_container_width=True):
-    st.session_state.unit_input_rows.append({"width": "", "height": "", "quantity": 1, "forced": "Any"})
-    st.rerun()
-
-if col2.button("📝 Update List", type="secondary", use_container_width=True):
-    # Consolidate units from input rows
-    consolidated_units = {}
+    col1, col2 = st.sidebar.columns(2)
     
-    for row_data in st.session_state.unit_input_rows:
-        if row_data["width"] and row_data["height"] and row_data["quantity"]:
-            forced_slabs = []
-            if row_data["forced"] and row_data["forced"] != "Any":
-                for slab in slab_sizes:
-                    if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
-                        forced_slabs = [slab]
-                        break
-            
-            forced_key = tuple(forced_slabs[0]) if forced_slabs else None
-            unit_key = (row_data["width"], row_data["height"], forced_key)
-            
-            if unit_key in consolidated_units:
-                consolidated_units[unit_key]["quantity"] += row_data["quantity"]
-            else:
-                consolidated_units[unit_key] = {
-                    "width": row_data["width"],
-                    "height": row_data["height"],
-                    "quantity": row_data["quantity"],
-                    "forced_slabs": forced_slabs
-                }
+    if col1.button("➕ Add Unit", type="primary", use_container_width=True):
+        st.session_state.unit_input_rows.append({"width": "", "height": "", "quantity": 1, "forced": "Any"})
+        st.rerun()
     
-    # Update the units list with consolidated data
-    st.session_state.units = []
-    for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
-        st.session_state.units.append({
-            "width": unit_data["width"],
-            "height": unit_data["height"],
-            "quantity": unit_data["quantity"],
-            "forced_slabs": unit_data["forced_slabs"],
-            "order": i
-        })
-    
-    st.rerun()
+    if col2.button("📝 Update List", type="secondary", use_container_width=True):
+        # Consolidate units from input rows
+        consolidated_units = {}
+        
+        for row_data in st.session_state.unit_input_rows:
+            if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                forced_slabs = []
+                if row_data["forced"] and row_data["forced"] != "Any":
+                    for slab in slab_sizes:
+                        if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                            forced_slabs = [slab]
+                            break
+                
+                forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                unit_key = (row_data["width"], row_data["height"], forced_key)
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": row_data["width"],
+                        "height": row_data["height"],
+                        "quantity": row_data["quantity"],
+                        "forced_slabs": forced_slabs
+                    }
+        
+        # Update the units list with consolidated data
+        st.session_state.units = []
+        for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+            st.session_state.units.append({
+                "width": unit_data["width"],
+                "height": unit_data["height"],
+                "quantity": unit_data["quantity"],
+                "forced_slabs": unit_data["forced_slabs"],
+                "order": i
+            })
+        
+        st.rerun()
 
 # Show current units
 if st.session_state.units:
