@@ -74,8 +74,18 @@ def parse_uploaded_file(uploaded_file):
         elif uploaded_file.type == "text/csv":
             content = str(uploaded_file.read(), "utf-8")
             return parse_boq_text(content)
+        elif uploaded_file.type == "application/pdf":
+            # PDF parsing would require additional libraries like PyPDF2 or pdfplumber
+            # For now, show a helpful message
+            st.error("PDF support requires additional setup. Please convert to text or use the text box for now.")
+            return []
+        elif uploaded_file.type.startswith("image/"):
+            # Image OCR would require libraries like pytesseract
+            # For now, show a helpful message
+            st.error("Image OCR support requires additional setup. Please convert to text or use the text box for now.")
+            return []
         else:
-            st.error("Unsupported file type. Please use .txt or .csv files.")
+            st.error("Unsupported file type. Please use .txt, .csv, .pdf, or image files.")
             return []
     except Exception as e:
         st.error(f"Error reading file: {str(e)}")
@@ -579,8 +589,8 @@ st.sidebar.subheader("📁 Bulk Import")
 # File Upload
 uploaded_file = st.sidebar.file_uploader(
     "Upload BOQ File",
-    type=['txt', 'csv'],
-    help="Drag and drop your bill of quantities file (.txt or .csv)"
+    type=['txt', 'csv', 'pdf', 'png', 'jpg', 'jpeg'],
+    help="Drag and drop your bill of quantities file (.txt, .csv, .pdf, or image)"
 )
 
 if uploaded_file is not None:
@@ -602,7 +612,7 @@ if uploaded_file is not None:
 # Text Area for Copy/Paste
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
+    placeholder="",
     height=120,
     help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560"
 )
