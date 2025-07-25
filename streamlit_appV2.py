@@ -59,24 +59,13 @@ def parse_boq_text(text):
             continue
             
         # Various regex patterns to match different formats
-        # Added more flexible patterns for OCR variations
         patterns = [
-            # Standard patterns
-            r'x\s*(\d+)\s+(\d+)\s*[×xX*]\s*(\d+)',  # x1 1650×560 (with space)
-            r'x\s*(\d+)\s*(\d+)\s*[×xX*]\s*(\d+)',  # x1 1650×560
-            r'(\d+)\s*x\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1x 1650×560
-            r'(\d+)\s*no\.?\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1 no. 1650×560
-            r'(\d+)\s*[×xX*]\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1×1650×560
-            
-            # OCR-friendly patterns (handle spaces, asterisks, etc)
-            r'[xX]\s*(\d+)\s*[:\s]\s*(\d+)\s*[×xX*]\s*(\d+)',  # x1: 1650×560
-            r'[xX]\s*(\d+)\s*[-=]\s*(\d+)\s*[×xX*]\s*(\d+)',  # x1 - 1650×560
-            r'(\d+)\s*pcs?\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1 pc 1650×560
-            r'(\d+)\s*units?\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1 unit 1650×560
-            
-            # Handle OCR errors with spaces in numbers
-            r'x\s*(\d+)\s+(\d+\s*\d*)\s*[×xX*]\s*(\d+\s*\d*)',  # x1 16 50 × 5 60
-            r'[xX]\s*(\d+)\s*[:\s]\s*(\d+\s*\d*)\s*[×xX*]\s*(\d+\s*\d*)',  # x1: 16 50 × 5 60
+            r'x(\d+)\s+(\d+)\s*[×x]\s*(\d+)',  # x1 1650×560 (with space)
+            r'x(\d+)\s*(\d+)\s*[×x]\s*(\d+)',  # x1 1650×560
+            r'(\d+)\s*x\s*(\d+)\s*[×x]\s*(\d+)',  # 1x 1650×560
+            r'(\d+)\s*no\.?\s*(\d+)\s*[×x]\s*(\d+)',  # 1 no. 1650×560
+            r'(\d+)\s*×\s*(\d+)\s*[×x]\s*(\d+)\s*\(qty[:\s]*(\d+)\)',  # 1650×560 (qty: 1)
+            r'(\d+)\s*[×x]\s*(\d+)\s*[×x]\s*(\d+)',  # 1×1650×560
         ]
         
         for pattern in patterns:
@@ -84,21 +73,20 @@ def parse_boq_text(text):
             if match:
                 groups = match.groups()
                 
+                if len(groups) == 3:
+                    if 'x' in line.lower() and line.lower().index('x') < 3:
+                        # Format: x1 1650×560
+                        qty, width, height = groups
+                    else:
+                        # Format: 1650×560×1 or similar
+                        width, height, qty = groups
+                elif len(groups) == 4:
+                    # Format with qty in parentheses
+                    width, height, _, qty = groups
+                else:
+                    continue
+                
                 try:
-                    if len(groups) == 3:
-                        # Clean up numbers with spaces
-                        clean_groups = []
-                        for g in groups:
-                            clean_g = re.sub(r'\s+', '', g)  # Remove spaces within numbers
-                            clean_groups.append(clean_g)
-                        
-                        if 'x' in line.lower() and line.lower().index('x') < 3:
-                            # Format: x1 1650×560
-                            qty, width, height = clean_groups
-                        else:
-                            # Format: 1650×560×1 or similar
-                            width, height, qty = clean_groups
-                    
                     # Validate dimensions are reasonable (between 10mm and 10000mm)
                     w = int(width)
                     h = int(height)
@@ -111,7 +99,7 @@ def parse_boq_text(text):
                             'quantity': q
                         })
                         break
-                except (ValueError, UnboundLocalError):
+                except ValueError:
                     continue
     
     return units
@@ -341,27 +329,16 @@ def parse_uploaded_file(uploaded_file):
                     progress_bar.empty()
                 
                 if extracted_text:
-                    # Show what was extracted for debugging
-                    with st.expander("🔍 Debug: Extracted Text", expanded=False):
-                        st.text_area("Raw OCR output:", extracted_text, height=200)
+                    # Don't show success message here, just process silently
                     
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
                     if units:
-                        st.success(f"✅ Found {len(units)} unit types!")
+                        # Units found - they will be added via the import process
                         return units
                     else:
-                        st.warning("No valid units found in the extracted text.")
-                        st.info("The OCR extracted text but couldn't find BOQ patterns.")
-                        
-                        # Show manual input helper
-                        st.markdown("**Please paste this format in the BOQ text box:**")
-                        st.code("""x1 1650×560
-x1 1650×150
-x1 2000×850
-x5 2000×350
-x6 2000×150""")
+                        # No units found - just return empty
                         return []
                 else:
                     st.error("Failed to extract text from PDF")
@@ -397,18 +374,12 @@ x6 2000×150""")
                     extracted_text = extract_text_from_image_ocr(image_bytes)
                 
                 if extracted_text:
-                    # Show what was extracted for debugging
-                    with st.expander("🔍 Debug: Extracted Text", expanded=False):
-                        st.text_area("Raw OCR output:", extracted_text, height=200)
-                    
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
                     if units:
-                        st.success(f"✅ Found {len(units)} unit types!")
                         return units
                     else:
-                        st.warning("No valid units found in the extracted text.")
                         return []
                 else:
                     st.error("Failed to extract text from image")
@@ -995,77 +966,10 @@ if uploaded_file is not None:
             for unit in imported_units:
                 boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
             
-            # Store the BOQ text in session state for the widget
+            # Just store the BOQ text in session state - don't process units yet
             st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
             
-            # Clear existing manual input rows
-            st.session_state.unit_input_rows = []
-            
-            # Add each imported unit as a row in manual input
-            for unit in imported_units:
-                st.session_state.unit_input_rows.append({
-                    "width": unit["width"],
-                    "height": unit["height"],
-                    "quantity": unit["quantity"],
-                    "forced": "Any"
-                })
-            
-            # Enable manual input section to show the imported units
-            st.session_state.manual_input_enabled = True
-            
-            # Now consolidate and update the units list automatically
-            consolidated_units = {}
-            
-            # Add existing units from the list
-            for unit in st.session_state.units:
-                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
-                unit_key = (unit["width"], unit["height"], forced_key)
-                
-                if unit_key in consolidated_units:
-                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                else:
-                    consolidated_units[unit_key] = {
-                        "width": unit["width"],
-                        "height": unit["height"],
-                        "quantity": unit["quantity"],
-                        "forced_slabs": unit.get("forced_slabs", [])
-                    }
-            
-            # Add the new imported units
-            for row_data in st.session_state.unit_input_rows:
-                if row_data["width"] and row_data["height"] and row_data["quantity"]:
-                    forced_slabs = []
-                    if row_data["forced"] and row_data["forced"] != "Any":
-                        for slab in slab_sizes:
-                            if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
-                                forced_slabs = [slab]
-                                break
-                    
-                    forced_key = tuple(forced_slabs[0]) if forced_slabs else None
-                    unit_key = (row_data["width"], row_data["height"], forced_key)
-                    
-                    if unit_key in consolidated_units:
-                        consolidated_units[unit_key]["quantity"] += row_data["quantity"]
-                    else:
-                        consolidated_units[unit_key] = {
-                            "width": row_data["width"],
-                            "height": row_data["height"],
-                            "quantity": row_data["quantity"],
-                            "forced_slabs": forced_slabs
-                        }
-            
-            # Update the session state with all consolidated units
-            st.session_state.units = []
-            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
-                st.session_state.units.append({
-                    "width": unit_data["width"],
-                    "height": unit_data["height"],
-                    "quantity": unit_data["quantity"],
-                    "forced_slabs": unit_data["forced_slabs"],
-                    "order": i
-                })
-            
-            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
+            st.sidebar.success(f"✅ Extracted {len(imported_units)} unit types! Click 'Import from Text' to add them.")
             st.rerun()
 
 # Text Area for Copy/Paste
@@ -1490,43 +1394,3 @@ if slab_sizes and st.session_state.units:
         # Global summary
         if global_boqlines:
             st.markdown("---")
-            st.subheader("📋 Overall Bill of Quantities")
-            st.markdown("**Total units to be produced:**")
-            
-            for (w, h), qty in sorted(global_boqlines.items()):
-                st.markdown(f"• **{qty}no.** {w}×{h}mm")
-        
-        # Check for unproduced units
-        produced_units = {}
-        for result in slab_outputs:
-            for order, qty in result["units"].items():
-                produced_units[order] = produced_units.get(order, 0) + qty
-        
-        unproduced = []
-        for u in st.session_state.units:
-            produced_qty = produced_units.get(u["order"], 0)
-            if produced_qty < u["quantity"]:
-                unproduced.append({
-                    "unit": u,
-                    "missing": u["quantity"] - produced_qty
-                })
-        
-        if unproduced:
-            st.markdown("---")
-            st.error("⚠️ **Some units could not be produced:**")
-            for item in unproduced:
-                u = item["unit"]
-                missing = item["missing"]
-                st.markdown(f"• **{missing}no.** {u['width']}×{u['height']}mm (too large for selected slabs)")
-    
-    else:
-        st.warning("⚠️ No units could be produced with the selected slab sizes. Please check your unit dimensions and slab selections.")
-
-elif not slab_sizes:
-    st.info("👆 Please select at least one slab size from the sidebar to begin optimization.")
-
-elif not st.session_state.units:
-    st.info("👆 Please add some finished units using the sidebar form to begin optimization.")
-
-else:
-    st.info("👆 Please select slab sizes and add finished units to begin optimization.")
