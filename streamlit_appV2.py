@@ -59,13 +59,24 @@ def parse_boq_text(text):
             continue
             
         # Various regex patterns to match different formats
+        # Added more flexible patterns for OCR variations
         patterns = [
-            r'x(\d+)\s+(\d+)\s*[×x]\s*(\d+)',  # x1 1650×560 (with space)
-            r'x(\d+)\s*(\d+)\s*[×x]\s*(\d+)',  # x1 1650×560
-            r'(\d+)\s*x\s*(\d+)\s*[×x]\s*(\d+)',  # 1x 1650×560
-            r'(\d+)\s*no\.?\s*(\d+)\s*[×x]\s*(\d+)',  # 1 no. 1650×560
-            r'(\d+)\s*×\s*(\d+)\s*[×x]\s*(\d+)\s*\(qty[:\s]*(\d+)\)',  # 1650×560 (qty: 1)
-            r'(\d+)\s*[×x]\s*(\d+)\s*[×x]\s*(\d+)',  # 1×1650×560
+            # Standard patterns
+            r'x\s*(\d+)\s+(\d+)\s*[×xX*]\s*(\d+)',  # x1 1650×560 (with space)
+            r'x\s*(\d+)\s*(\d+)\s*[×xX*]\s*(\d+)',  # x1 1650×560
+            r'(\d+)\s*x\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1x 1650×560
+            r'(\d+)\s*no\.?\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1 no. 1650×560
+            r'(\d+)\s*[×xX*]\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1×1650×560
+            
+            # OCR-friendly patterns (handle spaces, asterisks, etc)
+            r'[xX]\s*(\d+)\s*[:\s]\s*(\d+)\s*[×xX*]\s*(\d+)',  # x1: 1650×560
+            r'[xX]\s*(\d+)\s*[-=]\s*(\d+)\s*[×xX*]\s*(\d+)',  # x1 - 1650×560
+            r'(\d+)\s*pcs?\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1 pc 1650×560
+            r'(\d+)\s*units?\s*(\d+)\s*[×xX*]\s*(\d+)',  # 1 unit 1650×560
+            
+            # Handle OCR errors with spaces in numbers
+            r'x\s*(\d+)\s+(\d+\s*\d*)\s*[×xX*]\s*(\d+\s*\d*)',  # x1 16 50 × 5 60
+            r'[xX]\s*(\d+)\s*[:\s]\s*(\d+\s*\d*)\s*[×xX*]\s*(\d+\s*\d*)',  # x1: 16 50 × 5 60
         ]
         
         for pattern in patterns:
@@ -73,20 +84,21 @@ def parse_boq_text(text):
             if match:
                 groups = match.groups()
                 
-                if len(groups) == 3:
-                    if 'x' in line.lower() and line.lower().index('x') < 3:
-                        # Format: x1 1650×560
-                        qty, width, height = groups
-                    else:
-                        # Format: 1650×560×1 or similar
-                        width, height, qty = groups
-                elif len(groups) == 4:
-                    # Format with qty in parentheses
-                    width, height, _, qty = groups
-                else:
-                    continue
-                
                 try:
+                    if len(groups) == 3:
+                        # Clean up numbers with spaces
+                        clean_groups = []
+                        for g in groups:
+                            clean_g = re.sub(r'\s+', '', g)  # Remove spaces within numbers
+                            clean_groups.append(clean_g)
+                        
+                        if 'x' in line.lower() and line.lower().index('x') < 3:
+                            # Format: x1 1650×560
+                            qty, width, height = clean_groups
+                        else:
+                            # Format: 1650×560×1 or similar
+                            width, height, qty = clean_groups
+                    
                     # Validate dimensions are reasonable (between 10mm and 10000mm)
                     w = int(width)
                     h = int(height)
@@ -99,7 +111,7 @@ def parse_boq_text(text):
                             'quantity': q
                         })
                         break
-                except ValueError:
+                except (ValueError, UnboundLocalError):
                     continue
     
     return units
@@ -329,16 +341,27 @@ def parse_uploaded_file(uploaded_file):
                     progress_bar.empty()
                 
                 if extracted_text:
-                    # Don't show success message here, just process silently
+                    # Show what was extracted for debugging
+                    with st.expander("🔍 Debug: Extracted Text", expanded=False):
+                        st.text_area("Raw OCR output:", extracted_text, height=200)
                     
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
                     if units:
-                        # Units found - they will be added via the import process
+                        st.success(f"✅ Found {len(units)} unit types!")
                         return units
                     else:
-                        # No units found - just return empty
+                        st.warning("No valid units found in the extracted text.")
+                        st.info("The OCR extracted text but couldn't find BOQ patterns.")
+                        
+                        # Show manual input helper
+                        st.markdown("**Please paste this format in the BOQ text box:**")
+                        st.code("""x1 1650×560
+x1 1650×150
+x1 2000×850
+x5 2000×350
+x6 2000×150""")
                         return []
                 else:
                     st.error("Failed to extract text from PDF")
@@ -374,12 +397,18 @@ def parse_uploaded_file(uploaded_file):
                     extracted_text = extract_text_from_image_ocr(image_bytes)
                 
                 if extracted_text:
+                    # Show what was extracted for debugging
+                    with st.expander("🔍 Debug: Extracted Text", expanded=False):
+                        st.text_area("Raw OCR output:", extracted_text, height=200)
+                    
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
                     if units:
+                        st.success(f"✅ Found {len(units)} unit types!")
                         return units
                     else:
+                        st.warning("No valid units found in the extracted text.")
                         return []
                 else:
                     st.error("Failed to extract text from image")
