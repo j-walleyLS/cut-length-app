@@ -1,5 +1,5 @@
 if uploaded_file is not None:
-    if st.sidebar.button("📄 Extract & Import", type="primary", use_container_width=True):
+    if st.sidebar.button("📄 Extract Text", type="primary", use_container_width=True):
         # Reset the file pointer to the beginning
         uploaded_file.seek(0)
         
@@ -26,9 +26,23 @@ if uploaded_file is not None:
             extracted_text = str(uploaded_file.read(), "utf-8")
         
         if extracted_text:
-            # Show what was extracted in an expander
-            with st.sidebar.expander("📋 Extracted Text", expanded=True):
-                st.code(extracted_text[:500] + "..." if len(extracted_text) > 500 else# Streamlit Cut Length Optimiser with OCR Support
+            # Parse the extracted text
+            units = parse_boq_text(extracted_text)
+            
+            if units:
+                # Format as BOQ lines
+                boq_lines = []
+                for unit in units:
+                    boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                formatted_text = '\n'.join(boq_lines)
+                st.session_state.boq_extracted_content = formatted_text
+                st.sidebar.success(f"✅ Found {len(units)} units!")
+            else:
+                # Store raw text if no units found
+                st.session_state.boq_extracted_content = extracted_text
+                st.sidebar.warning("No BOQ patterns found in extracted text.")
+            
+            st.rerun()# Streamlit Cut Length Optimiser with OCR Support
 
 import math
 import copy
