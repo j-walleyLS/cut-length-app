@@ -951,8 +951,8 @@ if uploaded_file is not None:
             for unit in imported_units:
                 boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
             
-            # Update the bulk text area with the imported BOQ
-            bulk_text = '\n'.join(boq_text_lines)
+            # Store the BOQ text in session state for the widget
+            st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
             
             # Clear existing manual input rows
             st.session_state.unit_input_rows = []
@@ -1021,28 +1021,17 @@ if uploaded_file is not None:
                     "order": i
                 })
             
-            # Store the bulk text in session state to persist it
-            st.session_state.bulk_text_content = bulk_text
-            
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
 
-# Text Area for Copy/Paste - check if we have content from import
-if "bulk_text_content" not in st.session_state:
-    st.session_state.bulk_text_content = ""
-
+# Text Area for Copy/Paste
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    value=st.session_state.bulk_text_content,
     placeholder="x1 1650×560",
     height=120,
     help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560",
-    key="bulk_text_area"
+    key="bulk_text_input"
 )
-
-# Update session state when text area changes
-if bulk_text != st.session_state.bulk_text_content:
-    st.session_state.bulk_text_content = bulk_text
 
 if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
@@ -1066,28 +1055,29 @@ if bulk_text.strip():
                         "forced_slabs": unit.get("forced_slabs", [])
                     }
             
-            # Add any units from manual input rows
-            for row_data in st.session_state.unit_input_rows:
-                if row_data["width"] and row_data["height"] and row_data["quantity"]:
-                    forced_slabs = []
-                    if row_data["forced"] and row_data["forced"] != "Any":
-                        for slab in slab_sizes:
-                            if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
-                                forced_slabs = [slab]
-                                break
-                    
-                    forced_key = tuple(forced_slabs[0]) if forced_slabs else None
-                    unit_key = (row_data["width"], row_data["height"], forced_key)
-                    
-                    if unit_key in consolidated_units:
-                        consolidated_units[unit_key]["quantity"] += row_data["quantity"]
-                    else:
-                        consolidated_units[unit_key] = {
-                            "width": row_data["width"],
-                            "height": row_data["height"],
-                            "quantity": row_data["quantity"],
-                            "forced_slabs": forced_slabs
-                        }
+            # Add any units from manual input rows (only if enabled)
+            if st.session_state.manual_input_enabled:
+                for row_data in st.session_state.unit_input_rows:
+                    if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                        forced_slabs = []
+                        if row_data["forced"] and row_data["forced"] != "Any":
+                            for slab in slab_sizes:
+                                if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                                    forced_slabs = [slab]
+                                    break
+                        
+                        forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                        unit_key = (row_data["width"], row_data["height"], forced_key)
+                        
+                        if unit_key in consolidated_units:
+                            consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                        else:
+                            consolidated_units[unit_key] = {
+                                "width": row_data["width"],
+                                "height": row_data["height"],
+                                "quantity": row_data["quantity"],
+                                "forced_slabs": forced_slabs
+                            }
             
             # Add imported units to consolidated list
             for unit in imported_units:
