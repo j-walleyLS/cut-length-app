@@ -946,6 +946,14 @@ if uploaded_file is not None:
     if st.sidebar.button("Import from File", type="primary", use_container_width=True):
         imported_units = parse_uploaded_file(uploaded_file)
         if imported_units:
+            # Create BOQ text from imported units
+            boq_text_lines = []
+            for unit in imported_units:
+                boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+            
+            # Update the bulk text area with the imported BOQ
+            bulk_text = '\n'.join(boq_text_lines)
+            
             # Clear existing manual input rows
             st.session_state.unit_input_rows = []
             
@@ -961,7 +969,7 @@ if uploaded_file is not None:
             # Enable manual input section to show the imported units
             st.session_state.manual_input_enabled = True
             
-            # Now consolidate and update the units list
+            # Now consolidate and update the units list automatically
             consolidated_units = {}
             
             # Add existing units from the list
@@ -1013,16 +1021,28 @@ if uploaded_file is not None:
                     "order": i
                 })
             
+            # Store the bulk text in session state to persist it
+            st.session_state.bulk_text_content = bulk_text
+            
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
 
-# Text Area for Copy/Paste
+# Text Area for Copy/Paste - check if we have content from import
+if "bulk_text_content" not in st.session_state:
+    st.session_state.bulk_text_content = ""
+
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
+    value=st.session_state.bulk_text_content,
     placeholder="x1 1650×560",
     height=120,
-    help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560"
+    help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560",
+    key="bulk_text_area"
 )
+
+# Update session state when text area changes
+if bulk_text != st.session_state.bulk_text_content:
+    st.session_state.bulk_text_content = bulk_text
 
 if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
