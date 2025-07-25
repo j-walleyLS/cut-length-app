@@ -1,5 +1,2 @@
 streamlit
 PyMuPDF==1.23.8
-easyocr==1.7.0
-numpy==1.24.3
-Pillow==10.0.0
