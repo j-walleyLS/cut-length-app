@@ -1178,7 +1178,7 @@ if bulk_text.strip():
             st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
             
             # Clear the text area content
-            st.session_state.boq_text_content = ""
+            st.session_state.boq_display_text = ""
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
