@@ -1075,8 +1075,8 @@ if uploaded_file is not None:
                         "order": i
                     })
                 
-                # Clear the extracted text
-                st.session_state.show_extracted_text = ""
+                # Clear the text area content
+                st.session_state.boq_text_content = ""
                 
                 st.sidebar.success(f"✅ Imported {len(imported_units)} unit types!")
                 st.rerun()
@@ -1177,8 +1177,8 @@ if bulk_text.strip():
             # Clear manual input rows after successful import
             st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
             
-            # Clear the extracted text
-            st.session_state.show_extracted_text = ""
+            # Clear the text area content
+            st.session_state.boq_text_content = ""
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
