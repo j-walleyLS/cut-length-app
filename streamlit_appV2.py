@@ -168,7 +168,7 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
             page = pdf_document[page_num]
             
             # Convert page to image - start with lower DPI to reduce file size
-            mat = fitz.Matrix(200/72, 200/72)  # 200 DPI to stay under 1MB limit
+            mat = fitz.Matrix(150/72, 150/72)  # Reduced to 150 DPI for faster processing
             pix = page.get_pixmap(matrix=mat)
             img_data = pix.pil_tobytes(format="PNG")
             
@@ -183,47 +183,52 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
                 rgb_image.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
                 image = rgb_image
             
-            # Save as JPEG with compression
-            image.save(output, format='JPEG', quality=85, optimize=True)
+            # Save as JPEG with compression - reduced quality for faster upload
+            image.save(output, format='JPEG', quality=75, optimize=True)
             compressed_data = output.getvalue()
             
             # Check size and compress more if needed
-            if len(compressed_data) > 900000:  # 900KB to be safe
+            if len(compressed_data) > 500000:  # 500KB to be safer
                 output = BytesIO()
-                image.save(output, format='JPEG', quality=70, optimize=True)
+                image.save(output, format='JPEG', quality=60, optimize=True)
                 compressed_data = output.getvalue()
             
             # Convert to base64
             img_base64 = base64.b64encode(compressed_data).decode()
             
-            # Make API request with settings optimized for handwriting
+            # Make API request with increased timeout
             payload = {
                 'apikey': OCR_API_KEY,
                 'base64Image': f'data:image/jpeg;base64,{img_base64}',
                 'language': 'eng',
                 'isOverlayRequired': False,
-                'detectOrientation': True,
-                'scale': True,
-                'OCREngine': 2,  # Engine 2 is better for handwriting
-                'isTable': True,  # Help with structured data
+                'detectOrientation': False,  # Disabled for faster processing
+                'scale': False,  # Disabled for faster processing
+                'OCREngine': 1,  # Engine 1 is faster than Engine 2
+                'isTable': False,  # Disabled for faster processing
                 'filetype': 'JPG'
             }
             
-            response = requests.post(api_url, data=payload, timeout=30)
-            result = response.json()
-            
-            if result.get('IsErroredOnProcessing') == False:
-                text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
-                if text.strip():  # Only add non-empty text
-                    all_text.append(text)
+            try:
+                response = requests.post(api_url, data=payload, timeout=60)  # Increased timeout
+                result = response.json()
+                
+                if result.get('IsErroredOnProcessing') == False:
+                    text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
+                    if text.strip():  # Only add non-empty text
+                        all_text.append(text)
+                    else:
+                        st.warning(f"No text found on page {page_num + 1}")
                 else:
-                    st.warning(f"No text found on page {page_num + 1}")
-            else:
-                error_msg = result.get('ErrorMessage', [])
-                if isinstance(error_msg, list):
-                    error_msg = ', '.join(error_msg)
-                st.warning(f"OCR failed for page {page_num + 1}: {error_msg}")
-        
+                    error_msg = result.get('ErrorMessage', [])
+                    if isinstance(error_msg, list):
+                        error_msg = ', '.join(error_msg)
+                    st.warning(f"OCR failed for page {page_num + 1}: {error_msg}")
+                    
+            except requests.exceptions.Timeout:
+                st.warning(f"OCR timed out for page {page_num + 1}. Skipping...")
+                continue
+                
         pdf_document.close()
         
         combined_text = '\n'.join(all_text)
@@ -234,16 +239,26 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
             st.info("""
             • Handwritten text (OCR works better with printed text)
             • Image quality issues
-            • API limitations
+            • API limitations or timeout
             
             **Please use the manual input below to enter your data.**
+            
+            For your handwritten BOQ, you can type:
+            ```
+            x1 1650×560
+            x1 1650×150
+            x1 2000×850
+            x5 2000×350
+            x6 2000×150
+            ```
             """)
             return None
             
         return combined_text
         
     except requests.exceptions.Timeout:
-        st.error("OCR request timed out. Please try manual input.")
+        st.error("OCR request timed out. The file might be too large or complex.")
+        st.info("Please try manual input or use a smaller/clearer image.")
         return None
     except Exception as e:
         st.error(f"Cloud OCR Error: {str(e)}")
