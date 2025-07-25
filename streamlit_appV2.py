@@ -1,4 +1,34 @@
-# Streamlit Cut Length Optimiser with OCR Support
+if uploaded_file is not None:
+    if st.sidebar.button("📄 Extract & Import", type="primary", use_container_width=True):
+        # Reset the file pointer to the beginning
+        uploaded_file.seek(0)
+        
+        # Extract text based on file type
+        extracted_text = None
+        
+        if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
+            pdf_bytes = uploaded_file.read()
+            with st.spinner("📄 Extracting text from PDF..."):
+                progress_bar = st.progress(0)
+                
+                def update_progress(current, total):
+                    progress_bar.progress(current / total)
+                
+                extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                progress_bar.empty()
+                
+        elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
+            image_bytes = uploaded_file.read()
+            with st.spinner("🖼️ Extracting text from image..."):
+                extracted_text = extract_text_from_image_ocr(image_bytes)
+                
+        elif uploaded_file.type in ["text/plain", "text/csv"]:
+            extracted_text = str(uploaded_file.read(), "utf-8")
+        
+        if extracted_text:
+            # Show what was extracted in an expander
+            with st.sidebar.expander("📋 Extracted Text", expanded=True):
+                st.code(extracted_text[:500] + "..." if len(extracted_text) > 500 else# Streamlit Cut Length Optimiser with OCR Support
 
 import math
 import copy
@@ -1013,20 +1043,25 @@ if uploaded_file is not None:
             
             st.rerun()
 
-# Show status message if text was extracted
+# Show extracted text in a read-only text area if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
-    st.sidebar.info("✅ Text extracted! Review in the box below and click 'Import from Text'")
+    st.sidebar.markdown("**📋 Extracted BOQ Text:**")
+    # Read-only text area to display extracted content
+    st.sidebar.text_area(
+        "Extracted Content (Copy from here)",
+        value=st.session_state.boq_extracted_content,
+        height=120,
+        disabled=True,  # Makes it read-only
+        help="Copy this text and paste it below"
+    )
+    st.sidebar.info("✅ Copy the text above and paste it in the box below")
 
-# Text Area for manual input
-# Use a unique key based on the extracted content to force refresh
-text_area_key = f"boq_text_{hash(st.session_state.get('boq_extracted_content', ''))}"
+# Original text area for manual input (this is where "sco" appears)
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    value=st.session_state.get('boq_extracted_content', ''),
     placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
-    help="Paste your BOQ text here",
-    key=text_area_key
+    help="Paste your BOQ text here"
 )
 
 if bulk_text.strip():
