@@ -966,10 +966,77 @@ if uploaded_file is not None:
             for unit in imported_units:
                 boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
             
-            # Just store the BOQ text in session state - don't process units yet
+            # Store the BOQ text in session state for the widget
             st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
             
-            st.sidebar.success(f"✅ Extracted {len(imported_units)} unit types! Click 'Import from Text' to add them.")
+            # Clear existing manual input rows
+            st.session_state.unit_input_rows = []
+            
+            # Add each imported unit as a row in manual input
+            for unit in imported_units:
+                st.session_state.unit_input_rows.append({
+                    "width": unit["width"],
+                    "height": unit["height"],
+                    "quantity": unit["quantity"],
+                    "forced": "Any"
+                })
+            
+            # Enable manual input section to show the imported units
+            st.session_state.manual_input_enabled = True
+            
+            # Now consolidate and update the units list automatically
+            consolidated_units = {}
+            
+            # Add existing units from the list
+            for unit in st.session_state.units:
+                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
+                unit_key = (unit["width"], unit["height"], forced_key)
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": unit.get("forced_slabs", [])
+                    }
+            
+            # Add the new imported units
+            for row_data in st.session_state.unit_input_rows:
+                if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                    forced_slabs = []
+                    if row_data["forced"] and row_data["forced"] != "Any":
+                        for slab in slab_sizes:
+                            if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                                forced_slabs = [slab]
+                                break
+                    
+                    forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                    unit_key = (row_data["width"], row_data["height"], forced_key)
+                    
+                    if unit_key in consolidated_units:
+                        consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                    else:
+                        consolidated_units[unit_key] = {
+                            "width": row_data["width"],
+                            "height": row_data["height"],
+                            "quantity": row_data["quantity"],
+                            "forced_slabs": forced_slabs
+                        }
+            
+            # Update the session state with all consolidated units
+            st.session_state.units = []
+            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+                st.session_state.units.append({
+                    "width": unit_data["width"],
+                    "height": unit_data["height"],
+                    "quantity": unit_data["quantity"],
+                    "forced_slabs": unit_data["forced_slabs"],
+                    "order": i
+                })
+            
+            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
 
 # Text Area for Copy/Paste
@@ -1394,3 +1461,43 @@ if slab_sizes and st.session_state.units:
         # Global summary
         if global_boqlines:
             st.markdown("---")
+            st.subheader("📋 Overall Bill of Quantities")
+            st.markdown("**Total units to be produced:**")
+            
+            for (w, h), qty in sorted(global_boqlines.items()):
+                st.markdown(f"• **{qty}no.** {w}×{h}mm")
+        
+        # Check for unproduced units
+        produced_units = {}
+        for result in slab_outputs:
+            for order, qty in result["units"].items():
+                produced_units[order] = produced_units.get(order, 0) + qty
+        
+        unproduced = []
+        for u in st.session_state.units:
+            produced_qty = produced_units.get(u["order"], 0)
+            if produced_qty < u["quantity"]:
+                unproduced.append({
+                    "unit": u,
+                    "missing": u["quantity"] - produced_qty
+                })
+        
+        if unproduced:
+            st.markdown("---")
+            st.error("⚠️ **Some units could not be produced:**")
+            for item in unproduced:
+                u = item["unit"]
+                missing = item["missing"]
+                st.markdown(f"• **{missing}no.** {u['width']}×{u['height']}mm (too large for selected slabs)")
+    
+    else:
+        st.warning("⚠️ No units could be produced with the selected slab sizes. Please check your unit dimensions and slab selections.")
+
+elif not slab_sizes:
+    st.info("👆 Please select at least one slab size from the sidebar to begin optimization.")
+
+elif not st.session_state.units:
+    st.info("👆 Please add some finished units using the sidebar form to begin optimization.")
+
+else:
+    st.info("👆 Please select slab sizes and add finished units to begin optimization.")
