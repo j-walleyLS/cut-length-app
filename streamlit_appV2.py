@@ -1147,44 +1147,41 @@ if bulk_text.strip():
 st.sidebar.markdown("---")
 
 # Manual Input Section
-col1, col2 = st.sidebar.columns([2, 1])
-with col1:
-    st.sidebar.subheader("✏️ Manual Input")
-with col2:
-    # Custom toggle switch using markdown and session state
-    if "manual_input_enabled" not in st.session_state:
-        st.session_state.manual_input_enabled = False
-    
-    # Add some spacing to align with header
-    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
-    
-    toggle_label = "🔴" if not st.session_state.manual_input_enabled else "🟢"
-    if st.button(
-        toggle_label,
-        key="manual_toggle",
-        help="Toggle manual input on/off",
-        type="secondary" if not st.session_state.manual_input_enabled else "primary"
-    ):
-        st.session_state.manual_input_enabled = not st.session_state.manual_input_enabled
-        st.rerun()
+# Initialize state
+if "manual_input_enabled" not in st.session_state:
+    st.session_state.manual_input_enabled = False
 
-# Add custom CSS for toggle switch appearance
+# Create columns for header and toggle
+col1, col2 = st.sidebar.columns([3, 1])
+
+with col1:
+    st.markdown("### ✏️ Manual Input")
+
+with col2:
+    # Simple toggle using Streamlit's native toggle
+    st.markdown("<div style='height: 0.7rem;'></div>", unsafe_allow_html=True)  # Align with header
+    manual_enabled = st.toggle(
+        "",
+        value=st.session_state.manual_input_enabled,
+        key="manual_toggle",
+        help="Toggle manual input on/off"
+    )
+    st.session_state.manual_input_enabled = manual_enabled
+
+# Add custom CSS to style the toggle
 st.markdown("""
 <style>
-    button[key="manual_toggle"] {
-        width: 60px !important;
-        height: 30px !important;
-        border-radius: 15px !important;
-        padding: 0 !important;
-        transition: all 0.3s ease !important;
+    /* Style the toggle switch */
+    .stToggle > label {
+        width: 50px !important;
     }
-    button[key="manual_toggle"][kind="secondary"] {
-        background-color: #dc3545 !important;
-        border-color: #dc3545 !important;
+    
+    .stToggle > label > div {
+        background-color: #e0e0e0 !important;
     }
-    button[key="manual_toggle"][kind="primary"] {
-        background-color: #28a745 !important;
-        border-color: #28a745 !important;
+    
+    .stToggle > label > div[data-checked="true"] {
+        background-color: #2196F3 !important;
     }
 </style>
 """, unsafe_allow_html=True)
