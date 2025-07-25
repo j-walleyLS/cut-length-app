@@ -5,16 +5,22 @@ import copy
 import streamlit as st
 import re
 from io import BytesIO
+import requests
+import base64
 
 # OCR and PDF handling imports
 try:
     import fitz  # PyMuPDF
-    import pytesseract
     from PIL import Image
+    import requests
+    import base64
     OCR_AVAILABLE = True
+    # Check if using cloud OCR or local
+    CLOUD_OCR = True  # Set to True to use OCR.space API
+    OCR_API_KEY = "K87215639688957"  # Free tier API key
 except ImportError:
     OCR_AVAILABLE = False
-    st.warning("OCR libraries not installed. Run: pip install PyMuPDF pytesseract pillow")
+    st.warning("Libraries not installed. Run: pip install PyMuPDF pillow requests")
 
 BLADE_WIDTH = 4
 MAX_BRANCH_COUNT = 10000
@@ -81,11 +87,55 @@ def extract_text_from_pdf_ocr(pdf_bytes, progress_callback=None):
         return None
     
     try:
+        if CLOUD_OCR:
+            # Use OCR.space API (cloud-based, no local installation needed)
+            return extract_text_with_cloud_ocr(pdf_bytes, progress_callback)
+        else:
+            # Use local Tesseract
+            import pytesseract
+            # Open PDF with PyMuPDF
+            pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+            
+            all_text = []
+            total_pages = len(pdf_document)
+            
+            for page_num in range(total_pages):
+                if progress_callback:
+                    progress_callback(page_num + 1, total_pages)
+                
+                # Get the page
+                page = pdf_document[page_num]
+                
+                # Convert page to image
+                mat = fitz.Matrix(300/72, 300/72)  # 300 DPI
+                pix = page.get_pixmap(matrix=mat)
+                img_data = pix.pil_tobytes(format="PNG")
+                
+                # Convert to PIL Image
+                image = Image.open(BytesIO(img_data))
+                
+                # Perform OCR on the image
+                text = pytesseract.image_to_string(image)
+                all_text.append(text)
+            
+            pdf_document.close()
+            return '\n'.join(all_text)
+    
+    except Exception as e:
+        st.error(f"OCR Error: {str(e)}")
+        return None
+
+def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
+    """Extract text using OCR.space cloud API"""
+    try:
         # Open PDF with PyMuPDF
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
         
         all_text = []
         total_pages = len(pdf_document)
+        
+        # OCR.space API endpoint
+        api_url = "https://api.ocr.space/parse/image"
         
         for page_num in range(total_pages):
             if progress_callback:
@@ -99,18 +149,34 @@ def extract_text_from_pdf_ocr(pdf_bytes, progress_callback=None):
             pix = page.get_pixmap(matrix=mat)
             img_data = pix.pil_tobytes(format="PNG")
             
-            # Convert to PIL Image
-            image = Image.open(BytesIO(img_data))
+            # Convert to base64
+            img_base64 = base64.b64encode(img_data).decode()
             
-            # Perform OCR on the image
-            text = pytesseract.image_to_string(image)
-            all_text.append(text)
+            # Make API request
+            payload = {
+                'apikey': OCR_API_KEY,
+                'base64Image': f'data:image/png;base64,{img_base64}',
+                'language': 'eng',
+                'isOverlayRequired': False,
+                'detectOrientation': True,
+                'scale': True,
+                'OCREngine': 2  # Better for structured data
+            }
+            
+            response = requests.post(api_url, data=payload)
+            result = response.json()
+            
+            if result.get('IsErroredOnProcessing') == False:
+                text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
+                all_text.append(text)
+            else:
+                st.warning(f"OCR failed for page {page_num + 1}")
         
         pdf_document.close()
         return '\n'.join(all_text)
-    
+        
     except Exception as e:
-        st.error(f"OCR Error: {str(e)}")
+        st.error(f"Cloud OCR Error: {str(e)}")
         return None
 
 def extract_text_from_image_ocr(image_bytes):
@@ -119,12 +185,34 @@ def extract_text_from_image_ocr(image_bytes):
         return None
     
     try:
-        # Open image
-        image = Image.open(BytesIO(image_bytes))
-        
-        # Perform OCR
-        text = pytesseract.image_to_string(image)
-        return text
+        if CLOUD_OCR:
+            # Use cloud OCR
+            img_base64 = base64.b64encode(image_bytes).decode()
+            
+            payload = {
+                'apikey': OCR_API_KEY,
+                'base64Image': f'data:image/png;base64,{img_base64}',
+                'language': 'eng',
+                'isOverlayRequired': False,
+                'detectOrientation': True,
+                'scale': True,
+                'OCREngine': 2
+            }
+            
+            response = requests.post("https://api.ocr.space/parse/image", data=payload)
+            result = response.json()
+            
+            if result.get('IsErroredOnProcessing') == False:
+                return result.get('ParsedResults', [{}])[0].get('ParsedText', '')
+            else:
+                st.error("Cloud OCR processing failed")
+                return None
+        else:
+            # Use local Tesseract
+            import pytesseract
+            image = Image.open(BytesIO(image_bytes))
+            text = pytesseract.image_to_string(image)
+            return text
     
     except Exception as e:
         st.error(f"OCR Error: {str(e)}")
