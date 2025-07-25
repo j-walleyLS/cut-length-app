@@ -8,13 +8,13 @@ from io import BytesIO
 
 # OCR and PDF handling imports
 try:
-    from pdf2image import convert_from_bytes
+    import fitz  # PyMuPDF
     import pytesseract
     from PIL import Image
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
-    st.warning("OCR libraries not installed. Run: pip install pdf2image pytesseract pillow")
+    st.warning("OCR libraries not installed. Run: pip install PyMuPDF pytesseract pillow")
 
 BLADE_WIDTH = 4
 MAX_BRANCH_COUNT = 10000
@@ -81,20 +81,32 @@ def extract_text_from_pdf_ocr(pdf_bytes, progress_callback=None):
         return None
     
     try:
-        # Convert PDF to images
-        images = convert_from_bytes(pdf_bytes, dpi=300)
+        # Open PDF with PyMuPDF
+        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
         
         all_text = []
-        total_pages = len(images)
+        total_pages = len(pdf_document)
         
-        for i, image in enumerate(images):
+        for page_num in range(total_pages):
             if progress_callback:
-                progress_callback(i + 1, total_pages)
+                progress_callback(page_num + 1, total_pages)
+            
+            # Get the page
+            page = pdf_document[page_num]
+            
+            # Convert page to image
+            mat = fitz.Matrix(300/72, 300/72)  # 300 DPI
+            pix = page.get_pixmap(matrix=mat)
+            img_data = pix.pil_tobytes(format="PNG")
+            
+            # Convert to PIL Image
+            image = Image.open(BytesIO(img_data))
             
             # Perform OCR on the image
             text = pytesseract.image_to_string(image)
             all_text.append(text)
         
+        pdf_document.close()
         return '\n'.join(all_text)
     
     except Exception as e:
@@ -180,7 +192,7 @@ def parse_uploaded_file(uploaded_file):
                 ### To enable automatic PDF text extraction:
                 1. **Install required libraries:**
                    ```bash
-                   pip install pdf2image pytesseract pillow
+                   pip install PyMuPDF pytesseract pillow
                    ```
                 2. **Install Tesseract OCR:**
                    - **Windows:** Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
