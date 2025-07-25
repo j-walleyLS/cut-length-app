@@ -781,6 +781,8 @@ if "selected_slabs" not in st.session_state:
     st.session_state.selected_slabs = []
 if "unit_input_rows" not in st.session_state:
     st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+if "scant_slabs" not in st.session_state:
+    st.session_state.scant_slabs = set()  # Track which slabs are scants
 
 # -----------------------------
 # Main UI
@@ -829,6 +831,12 @@ italian_porcelain_slabs = [
     ((1200, 1200), (1194, 1194), "1200×1200\n(1194×1194)")
 ]
 
+scants_slabs = [
+    ((1800, 700), (1800, 700), "Britannia\n(1800×700)"),
+    ((1800, 700), (1800, 700), "Portland\n(1800×700)"),
+    ((2000, 1000), (2000, 1000), "Jura\n(2000×1000)")
+]
+
 # Create slab buttons with categories and two columns
 def create_slab_buttons(slab_list, category_name):
     st.sidebar.markdown(f"**{category_name}**")
@@ -846,15 +854,21 @@ def create_slab_buttons(slab_list, category_name):
             with col1:
                 if st.button(
                     f"{'✓ ' if is_selected else ''}{label}",
-                    key=f"slab_{actual_size}",
-                    help=f"Click to {'remove' if is_selected else 'add'} {display_size[0]}×{display_size[1]}mm slab",
+                    key=f"slab_{actual_size}_{category_name}_{i}",  # Make key unique per category
+                    help=f"Click to {'remove' if is_selected else 'add'} {label}",
                     type="primary" if is_selected else "secondary",
                     use_container_width=True
                 ):
                     if actual_size in st.session_state.selected_slabs:
                         st.session_state.selected_slabs.remove(actual_size)
+                        # Remove from scants if it's a scant
+                        if category_name == "Scants":
+                            st.session_state.scant_slabs.discard(actual_size)
                     else:
                         st.session_state.selected_slabs.append(actual_size)
+                        # Add to scants if it's a scant
+                        if category_name == "Scants":
+                            st.session_state.scant_slabs.add(actual_size)
                     st.rerun()
         
         # Second button in pair (if exists)
@@ -865,15 +879,21 @@ def create_slab_buttons(slab_list, category_name):
             with col2:
                 if st.button(
                     f"{'✓ ' if is_selected else ''}{label}",
-                    key=f"slab_{actual_size}",
-                    help=f"Click to {'remove' if is_selected else 'add'} {display_size[0]}×{display_size[1]}mm slab",
+                    key=f"slab_{actual_size}_{category_name}_{i+1}",  # Make key unique per category
+                    help=f"Click to {'remove' if is_selected else 'add'} {label}",
                     type="primary" if is_selected else "secondary",
                     use_container_width=True
                 ):
                     if actual_size in st.session_state.selected_slabs:
                         st.session_state.selected_slabs.remove(actual_size)
+                        # Remove from scants if it's a scant
+                        if category_name == "Scants":
+                            st.session_state.scant_slabs.discard(actual_size)
                     else:
                         st.session_state.selected_slabs.append(actual_size)
+                        # Add to scants if it's a scant
+                        if category_name == "Scants":
+                            st.session_state.scant_slabs.add(actual_size)
                     st.rerun()
         
         # Add spacing between button rows, but not after the last row
@@ -884,6 +904,7 @@ def create_slab_buttons(slab_list, category_name):
 create_slab_buttons(paving_slabs, "Paving/Slabs")
 create_slab_buttons(treads_slabs, "Treads")
 create_slab_buttons(italian_porcelain_slabs, "Italian Porcelain")
+create_slab_buttons(scants_slabs, "Scants")
 
 st.sidebar.markdown("---")
 
@@ -1126,17 +1147,47 @@ if bulk_text.strip():
 st.sidebar.markdown("---")
 
 # Manual Input Section
-st.sidebar.subheader("✏️ Manual Input")
+col1, col2 = st.sidebar.columns([2, 1])
+with col1:
+    st.sidebar.subheader("✏️ Manual Input")
+with col2:
+    # Custom toggle switch using markdown and session state
+    if "manual_input_enabled" not in st.session_state:
+        st.session_state.manual_input_enabled = False
+    
+    # Add some spacing to align with header
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+    
+    toggle_label = "🔴" if not st.session_state.manual_input_enabled else "🟢"
+    if st.button(
+        toggle_label,
+        key="manual_toggle",
+        help="Toggle manual input on/off",
+        type="secondary" if not st.session_state.manual_input_enabled else "primary"
+    ):
+        st.session_state.manual_input_enabled = not st.session_state.manual_input_enabled
+        st.rerun()
 
-# Add toggle for manual input
-if "manual_input_enabled" not in st.session_state:
-    st.session_state.manual_input_enabled = False
-
-st.session_state.manual_input_enabled = st.sidebar.checkbox(
-    "Enable Manual Input", 
-    value=st.session_state.manual_input_enabled,
-    help="Toggle to show/hide manual input fields"
-)
+# Add custom CSS for toggle switch appearance
+st.markdown("""
+<style>
+    button[key="manual_toggle"] {
+        width: 60px !important;
+        height: 30px !important;
+        border-radius: 15px !important;
+        padding: 0 !important;
+        transition: all 0.3s ease !important;
+    }
+    button[key="manual_toggle"][kind="secondary"] {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+    }
+    button[key="manual_toggle"][kind="primary"] {
+        background-color: #28a745 !important;
+        border-color: #28a745 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 if st.session_state.manual_input_enabled:
     # Show input rows
@@ -1278,49 +1329,34 @@ if slab_sizes and st.session_state.units:
         
         for slab, allocated_units in allocation.items():
             sw, sh = slab
-            remaining = copy.deepcopy(allocated_units)
-            produced = {}
-            cut_length = 0
-            slab_count = 0
             
-            # Pack slabs until all allocated units are produced
-            while any(u["quantity"] > 0 for u in remaining):
-                best = pack_one_slab(sw, sh, remaining)
-                if not best["layout"]:
-                    break
-                
-                slab_count += 1
-                counts = {}
-                for p in best["layout"]:
-                    counts[p.unit_order] = counts.get(p.unit_order, 0) + 1
-                
-                for u in remaining:
-                    if u["order"] in counts:
-                        used = counts[u["order"]]
-                        u["quantity"] -= used
-                        produced[u["order"]] = produced.get(u["order"], 0) + used
-                
-                cut_length += best["cost"]
+            # Check if this is a scant slab
+            is_scant = slab in st.session_state.scant_slabs
             
-            if produced:  # Only add if something was actually produced
-                # Calculate areas using original units for reference
-                area = 0
-                for order, qty in produced.items():
-                    original_unit = next(u for u in st.session_state.units if u["order"] == order)
-                    area += original_unit["width"] * original_unit["height"] * qty
+            if is_scant:
+                # For scants, just calculate area without cut optimization
+                total_area = 0
+                produced = {}
                 
-                waste_area = (sw * sh * slab_count) - area
-                efficiency = (area / (sw * sh * slab_count)) * 100 if slab_count > 0 else 0
+                for unit in allocated_units:
+                    qty = unit["quantity"]
+                    produced[unit["order"]] = qty
+                    total_area += unit["width"] * unit["height"] * qty
+                
+                # Calculate number of scants needed
+                scant_area = sw * sh
+                scants_needed = math.ceil(total_area / scant_area)
                 
                 slab_outputs.append({
                     "slab": f"{sw}×{sh}",
                     "slab_size": (sw, sh),
                     "units": produced,
-                    "cut_length": cut_length,
-                    "area": area,
-                    "waste_area": waste_area,
-                    "efficiency": efficiency,
-                    "slab_count": slab_count
+                    "cut_length": 0,  # No cuts for scants
+                    "area": total_area,
+                    "waste_area": (scants_needed * scant_area) - total_area,
+                    "efficiency": (total_area / (scants_needed * scant_area)) * 100 if scants_needed > 0 else 0,
+                    "slab_count": scants_needed,
+                    "is_scant": True
                 })
                 
                 # Build global BOQ
@@ -1328,6 +1364,60 @@ if slab_sizes and st.session_state.units:
                     original_unit = next(u for u in st.session_state.units if u["order"] == order)
                     key = (original_unit['width'], original_unit['height'])
                     global_boqlines[key] = global_boqlines.get(key, 0) + qty
+                    
+            else:
+                # Regular slab processing with cut optimization
+                remaining = copy.deepcopy(allocated_units)
+                produced = {}
+                cut_length = 0
+                slab_count = 0
+                
+                # Pack slabs until all allocated units are produced
+                while any(u["quantity"] > 0 for u in remaining):
+                    best = pack_one_slab(sw, sh, remaining)
+                    if not best["layout"]:
+                        break
+                    
+                    slab_count += 1
+                    counts = {}
+                    for p in best["layout"]:
+                        counts[p.unit_order] = counts.get(p.unit_order, 0) + 1
+                    
+                    for u in remaining:
+                        if u["order"] in counts:
+                            used = counts[u["order"]]
+                            u["quantity"] -= used
+                            produced[u["order"]] = produced.get(u["order"], 0) + used
+                    
+                    cut_length += best["cost"]
+                
+                if produced:  # Only add if something was actually produced
+                    # Calculate areas using original units for reference
+                    area = 0
+                    for order, qty in produced.items():
+                        original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                        area += original_unit["width"] * original_unit["height"] * qty
+                    
+                    waste_area = (sw * sh * slab_count) - area
+                    efficiency = (area / (sw * sh * slab_count)) * 100 if slab_count > 0 else 0
+                    
+                    slab_outputs.append({
+                        "slab": f"{sw}×{sh}",
+                        "slab_size": (sw, sh),
+                        "units": produced,
+                        "cut_length": cut_length,
+                        "area": area,
+                        "waste_area": waste_area,
+                        "efficiency": efficiency,
+                        "slab_count": slab_count,
+                        "is_scant": False
+                    })
+                    
+                    # Build global BOQ
+                    for order, qty in produced.items():
+                        original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                        key = (original_unit['width'], original_unit['height'])
+                        global_boqlines[key] = global_boqlines.get(key, 0) + qty
     
     if slab_outputs:
         # Summary metrics
@@ -1347,17 +1437,29 @@ if slab_sizes and st.session_state.units:
         
         # Detailed results
         for result in slab_outputs:
-            with st.expander(f"{result['slab']}mm Slab", expanded=True):
+            slab_name = result['slab']
+            # Check if it's a scant and add the name
+            if result.get('is_scant'):
+                # Find which scant type this is
+                for _, actual_size, label in scants_slabs:
+                    if actual_size == result['slab_size']:
+                        slab_name = label.replace('\n', ' ')
+                        break
+            
+            with st.expander(f"{slab_name}mm {'Scant' if result.get('is_scant') else 'Slab'}", expanded=True):
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    st.metric("No. of Slabs Used", result['slab_count'])
+                    st.metric("No. of {'Scants' if result.get('is_scant') else 'Slabs'} Used", result['slab_count'])
                 
                 with col2:
-                    st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
+                    if result.get('is_scant'):
+                        st.metric("Total Area Required", f"{result['area'] / 1e6:.2f} m²")
+                    else:
+                        st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 
                 with col3:
-                    st.metric("Total Area", f"{result['area'] / 1e6:.2f} m²")
+                    st.metric("{'Material' if result.get('is_scant') else 'Total'} Area", f"{result['area'] / 1e6:.2f} m²")
                 
                 with col4:
                     st.markdown("**Units Produced:**")
