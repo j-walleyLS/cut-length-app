@@ -1159,7 +1159,7 @@ with col1:
 
 with col2:
     # Align toggle with subheader
-    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     manual_enabled = st.toggle(
         "",
         value=st.session_state.manual_input_enabled,
@@ -1186,20 +1186,13 @@ st.markdown("""
     .stToggle > label > div[data-checked="true"] {
         background-color: #2196F3 !important;
     }
-    
-    /* Reduce spacing around Manual Input section */
-    [data-testid="stSidebar"] .element-container:has(.stToggle) {
-        margin-top: -1rem !important;
-    }
-    
-    /* Align toggle with header */
-    .stToggle {
-        margin-top: -0.5rem !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 if st.session_state.manual_input_enabled:
+    # Add spacing before input rows to prevent overlap
+    st.sidebar.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+    
     # Show input rows
     rows_to_remove = []
     for row_idx, row_data in enumerate(st.session_state.unit_input_rows):
