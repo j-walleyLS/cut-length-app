@@ -341,9 +341,9 @@ def parse_uploaded_file(uploaded_file):
                     progress_bar.empty()
                 
                 if extracted_text:
-                    # Just return the raw extracted text without showing messages
-                    # The parsing will happen when the user clicks Extract Text or Quick Import
-                    return []
+                    # Parse the extracted text
+                    units = parse_boq_text(extracted_text)
+                    return units
                 else:
                     st.sidebar.error("Failed to extract text from PDF")
                     return []
@@ -1013,18 +1013,20 @@ if uploaded_file is not None:
             
             st.rerun()
 
-# Show extracted text in a code block if available
+# Show status message if text was extracted
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
-    st.sidebar.markdown("**📋 Extracted BOQ Text:**")
-    st.sidebar.code(st.session_state.boq_extracted_content, language=None)
-    st.sidebar.info("Copy the text above and paste it in the box below")
+    st.sidebar.info("✅ Text extracted! Review in the box below and click 'Import from Text'")
 
 # Text Area for manual input
+# Use a unique key based on the extracted content to force refresh
+text_area_key = f"boq_text_{hash(st.session_state.get('boq_extracted_content', ''))}"
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
+    value=st.session_state.get('boq_extracted_content', ''),
     placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
-    help="Paste your BOQ text here"
+    help="Paste your BOQ text here",
+    key=text_area_key
 )
 
 if bulk_text.strip():
