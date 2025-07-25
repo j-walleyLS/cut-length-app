@@ -1151,24 +1151,27 @@ st.sidebar.markdown("---")
 if "manual_input_enabled" not in st.session_state:
     st.session_state.manual_input_enabled = False
 
-# Create columns for header and toggle
-col1, col2 = st.sidebar.columns([3, 1])
+# Create columns for header and toggle - adjust ratio for better alignment
+col1, col2 = st.sidebar.columns([4, 1])
 
 with col1:
-    st.markdown("### ✏️ Manual Input")
+    st.subheader("✏️ Manual Input")
 
 with col2:
-    # Simple toggle using Streamlit's native toggle
-    st.markdown("<div style='height: 0.7rem;'></div>", unsafe_allow_html=True)  # Align with header
+    # Align toggle with subheader
+    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     manual_enabled = st.toggle(
         "",
         value=st.session_state.manual_input_enabled,
-        key="manual_toggle",
-        help="Toggle manual input on/off"
+        key="manual_toggle_switch",
+        help="Toggle manual input on/off",
+        label_visibility="collapsed"
     )
-    st.session_state.manual_input_enabled = manual_enabled
+    if manual_enabled != st.session_state.manual_input_enabled:
+        st.session_state.manual_input_enabled = manual_enabled
+        st.rerun()
 
-# Add custom CSS to style the toggle
+# Add custom CSS to style the toggle and reduce spacing
 st.markdown("""
 <style>
     /* Style the toggle switch */
@@ -1182,6 +1185,16 @@ st.markdown("""
     
     .stToggle > label > div[data-checked="true"] {
         background-color: #2196F3 !important;
+    }
+    
+    /* Reduce spacing around Manual Input section */
+    [data-testid="stSidebar"] .element-container:has(.stToggle) {
+        margin-top: -1rem !important;
+    }
+    
+    /* Align toggle with header */
+    .stToggle {
+        margin-top: -0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
