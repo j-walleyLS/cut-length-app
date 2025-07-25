@@ -1440,7 +1440,8 @@ if slab_sizes and st.session_state.units:
                         st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
                 
                 with col3:
-                    st.metric(f"{'Material' if result.get('is_scant') else 'Total'} Area", f"{result['area'] / 1e6:.2f} m²")
+                    metric_label = 'Material' if result.get('is_scant') else 'Total'
+                    st.metric(f"{metric_label} Area", f"{result['area'] / 1e6:.2f} m²")
                 
                 with col4:
                     st.markdown("**Units Produced:**")
