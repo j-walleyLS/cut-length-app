@@ -1010,6 +1010,9 @@ if uploaded_file is not None:
             if extracted_text:
                 # Store the extracted text
                 st.session_state.extracted_text_display = extracted_text
+                # Debug: Show what we're storing
+                st.sidebar.info(f"📄 Storing {len(extracted_text)} characters of extracted text")
+                st.sidebar.text(f"First 100 chars: {extracted_text[:100]}...")
                 st.rerun()
         
         elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
@@ -1020,6 +1023,9 @@ if uploaded_file is not None:
             if extracted_text:
                 # Store the extracted text
                 st.session_state.extracted_text_display = extracted_text
+                # Debug: Show what we're storing
+                st.sidebar.info(f"🖼️ Storing {len(extracted_text)} characters of extracted text")
+                st.sidebar.text(f"First 100 chars: {extracted_text[:100]}...")
                 st.rerun()
         
         # If not PDF/image or OCR failed, process normally
@@ -1105,14 +1111,14 @@ if uploaded_file is not None:
                 st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
                 st.rerun()
 
-# Text Area for Copy/Paste - directly use the extracted text
+# Text Area for Copy/Paste - Remove key parameter entirely
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
     value=st.session_state.get('extracted_text_display', ''),
     placeholder="x1 1650×560",
     height=120,
-    help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560",
-    key="bulk_text_input"
+    help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560"
+    # NO KEY PARAMETER - manage through value only
 )
 
 if bulk_text.strip():
