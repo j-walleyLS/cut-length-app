@@ -1,8 +1,20 @@
-# Streamlit Cut Length Optimiser
+# Streamlit Cut Length Optimiser with OCR Support
 
 import math
 import copy
 import streamlit as st
+import re
+from io import BytesIO
+
+# OCR and PDF handling imports
+try:
+    from pdf2image import convert_from_bytes
+    import pytesseract
+    from PIL import Image
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    st.warning("OCR libraries not installed. Run: pip install pdf2image pytesseract pillow")
 
 BLADE_WIDTH = 4
 MAX_BRANCH_COUNT = 10000
@@ -16,8 +28,6 @@ def parse_dimensions(dim_str):
 
 def parse_boq_text(text):
     """Parse BOQ text and extract units with quantities and dimensions"""
-    import re
-    
     units = []
     lines = text.strip().split('\n')
     
@@ -65,47 +75,48 @@ def parse_boq_text(text):
     
     return units
 
-def ocr_with_web_service(image_bytes):
-    """Use a free online OCR service for text extraction"""
+def extract_text_from_pdf_ocr(pdf_bytes, progress_callback=None):
+    """Extract text from PDF using OCR"""
+    if not OCR_AVAILABLE:
+        return None
+    
     try:
-        import requests
-        import base64
+        # Convert PDF to images
+        images = convert_from_bytes(pdf_bytes, dpi=300)
         
-        # Convert image to base64
-        image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+        all_text = []
+        total_pages = len(images)
         
-        # Try OCR.space free API (no registration required for basic use)
-        url = "https://api.ocr.space/parse/image"
-        
-        payload = {
-            'base64Image': f'data:image/png;base64,{image_b64}',
-            'language': 'eng',
-            'isOverlayRequired': False,
-            'detectOrientation': True,
-            'scale': True,
-            'OCREngine': 2
-        }
-        
-        response = requests.post(url, data=payload, timeout=30)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('IsErroredOnProcessing', False):
-                st.error(f"OCR Error: {result.get('ErrorMessage', 'Unknown error')}")
-                return ""
+        for i, image in enumerate(images):
+            if progress_callback:
+                progress_callback(i + 1, total_pages)
             
-            text = ""
-            for parsed_result in result.get('ParsedResults', []):
-                text += parsed_result.get('ParsedText', '') + "\n"
-            
-            return text.strip()
-        else:
-            st.error(f"OCR service error: {response.status_code}")
-            return ""
-            
+            # Perform OCR on the image
+            text = pytesseract.image_to_string(image)
+            all_text.append(text)
+        
+        return '\n'.join(all_text)
+    
     except Exception as e:
-        st.error(f"OCR error: {str(e)}")
-        return ""
+        st.error(f"OCR Error: {str(e)}")
+        return None
+
+def extract_text_from_image_ocr(image_bytes):
+    """Extract text from image using OCR"""
+    if not OCR_AVAILABLE:
+        return None
+    
+    try:
+        # Open image
+        image = Image.open(BytesIO(image_bytes))
+        
+        # Perform OCR
+        text = pytesseract.image_to_string(image)
+        return text
+    
+    except Exception as e:
+        st.error(f"OCR Error: {str(e)}")
+        return None
 
 def parse_uploaded_file(uploaded_file):
     """Parse uploaded file and extract BOQ data"""
@@ -113,65 +124,127 @@ def parse_uploaded_file(uploaded_file):
         if uploaded_file.type == "text/plain":
             content = str(uploaded_file.read(), "utf-8")
             return parse_boq_text(content)
+        
         elif uploaded_file.type == "text/csv":
             content = str(uploaded_file.read(), "utf-8")
             return parse_boq_text(content)
+        
         elif uploaded_file.type == "application/pdf":
-            try:
-                import pdfplumber
-                content = ""
+            if OCR_AVAILABLE:
+                # Use OCR to extract text from PDF
+                pdf_bytes = uploaded_file.read()
                 
-                # Try normal text extraction first
-                with pdfplumber.open(uploaded_file) as pdf:
-                    for page in pdf.pages:
-                        page_text = page.extract_text()
-                        if page_text and page_text.strip():
-                            content += page_text + "\n"
-                
-                # If no text found, try OCR on PDF pages
-                if not content.strip():
-                    st.info("No text found in PDF. Attempting OCR...")
+                with st.spinner("📄 Processing PDF with OCR..."):
+                    progress_bar = st.progress(0)
                     
-                    # Convert PDF pages to images and OCR
-                    uploaded_file.seek(0)  # Reset file pointer
-                    with pdfplumber.open(uploaded_file) as pdf:
-                        for page_num, page in enumerate(pdf.pages):
-                            # Convert page to image
-                            page_image = page.to_image(resolution=200)  # Higher res for better OCR
-                            
-                            # Convert PIL image to bytes
-                            import io
-                            img_bytes = io.BytesIO()
-                            page_image.save(img_bytes, format='PNG')
-                            img_bytes.seek(0)
-                            
-                            # OCR the page
-                            page_text = ocr_with_web_service(img_bytes.getvalue())
-                            if page_text.strip():
-                                content += page_text + "\n"
+                    def update_progress(current, total):
+                        progress_bar.progress(current / total)
+                    
+                    extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                    progress_bar.empty()
                 
-                if content.strip():
-                    return parse_boq_text(content)
+                if extracted_text:
+                    st.success("✅ Text extracted from PDF!")
+                    
+                    # Show extracted text in an expander for review
+                    with st.expander("📝 Review extracted text", expanded=False):
+                        st.text_area("Extracted content:", extracted_text, height=200)
+                    
+                    # Parse the extracted text
+                    units = parse_boq_text(extracted_text)
+                    
+                    if units:
+                        st.info(f"Found {len(units)} unit types in the PDF")
+                    else:
+                        st.warning("No valid units found in the extracted text. You can edit the text below.")
+                        # Allow manual editing
+                        edited_text = st.text_area(
+                            "Edit extracted text:",
+                            extracted_text,
+                            height=300,
+                            help="Edit the text to match the expected format: '1x 1650×560' or similar"
+                        )
+                        if st.button("Parse edited text"):
+                            units = parse_boq_text(edited_text)
+                            if units:
+                                return units
+                    
+                    return units
                 else:
-                    st.error("No readable text found in PDF after OCR attempt.")
+                    st.error("Failed to extract text from PDF")
                     return []
-                    
-            except ImportError:
-                st.error("PDF processing requires 'pdfplumber'. Please install it.")
-                return []
-        elif uploaded_file.type.startswith("image/"):
-            # Direct image OCR
-            image_bytes = uploaded_file.read()
-            st.info("Processing image with OCR...")
-            content = ocr_with_web_service(image_bytes)
-            if content.strip():
-                return parse_boq_text(content)
             else:
-                st.error("No text found in image.")
+                # Fallback to manual instructions if OCR not available
+                st.info("📄 PDF detected! OCR not available.")
+                st.markdown("""
+                ### To enable automatic PDF text extraction:
+                1. **Install required libraries:**
+                   ```bash
+                   pip install pdf2image pytesseract pillow
+                   ```
+                2. **Install Tesseract OCR:**
+                   - **Windows:** Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
+                   - **Mac:** `brew install tesseract`
+                   - **Linux:** `sudo apt-get install tesseract-ocr`
+                
+                ### Manual alternative:
+                1. **Open your PDF** in a PDF viewer
+                2. **Select all text** (Ctrl+A / Cmd+A) 
+                3. **Copy** (Ctrl+C / Cmd+C)
+                4. **Paste into the text box below** ⬇️
+                """)
                 return []
+        
+        elif uploaded_file.type.startswith("image/"):
+            if OCR_AVAILABLE:
+                # Use OCR to extract text from image
+                image_bytes = uploaded_file.read()
+                
+                with st.spinner("🖼️ Processing image with OCR..."):
+                    extracted_text = extract_text_from_image_ocr(image_bytes)
+                
+                if extracted_text:
+                    st.success("✅ Text extracted from image!")
+                    
+                    # Show extracted text for review
+                    with st.expander("📝 Review extracted text", expanded=False):
+                        st.text_area("Extracted content:", extracted_text, height=200)
+                    
+                    # Parse the extracted text
+                    units = parse_boq_text(extracted_text)
+                    
+                    if units:
+                        st.info(f"Found {len(units)} unit types in the image")
+                    else:
+                        st.warning("No valid units found. You can edit the text below.")
+                        edited_text = st.text_area(
+                            "Edit extracted text:",
+                            extracted_text,
+                            height=300
+                        )
+                        if st.button("Parse edited text"):
+                            units = parse_boq_text(edited_text)
+                            if units:
+                                return units
+                    
+                    return units
+                else:
+                    st.error("Failed to extract text from image")
+                    return []
+            else:
+                # Fallback instructions
+                st.info("🖼️ Image detected! OCR not available.")
+                st.markdown("""
+                To enable automatic text extraction, install OCR libraries (see PDF instructions above).
+                
+                **Manual alternative:** Use Google Lens on your phone to extract text.
+                """)
+                return []
+        
         else:
             st.error("Unsupported file type. Please use .txt, .csv, .pdf, or image files.")
             return []
+            
     except Exception as e:
         st.error(f"Error reading file: {str(e)}")
         return []
@@ -509,6 +582,8 @@ col1, col2 = st.columns([3, 1])
 with col1:
     st.title("🪚 Cut Length Optimiser")
     st.markdown("*Optimize material cutting from various slab sizes*")
+    if OCR_AVAILABLE:
+        st.markdown("🔍 **OCR Enabled** - Can extract text from PDFs and images")
 with col2:
     st.markdown("""
     <div style="text-align: right; padding-top: 1rem;">
