@@ -65,6 +65,48 @@ def parse_boq_text(text):
     
     return units
 
+def ocr_with_web_service(image_bytes):
+    """Use a free online OCR service for text extraction"""
+    try:
+        import requests
+        import base64
+        
+        # Convert image to base64
+        image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+        
+        # Try OCR.space free API (no registration required for basic use)
+        url = "https://api.ocr.space/parse/image"
+        
+        payload = {
+            'base64Image': f'data:image/png;base64,{image_b64}',
+            'language': 'eng',
+            'isOverlayRequired': False,
+            'detectOrientation': True,
+            'scale': True,
+            'OCREngine': 2
+        }
+        
+        response = requests.post(url, data=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('IsErroredOnProcessing', False):
+                st.error(f"OCR Error: {result.get('ErrorMessage', 'Unknown error')}")
+                return ""
+            
+            text = ""
+            for parsed_result in result.get('ParsedResults', []):
+                text += parsed_result.get('ParsedText', '') + "\n"
+            
+            return text.strip()
+        else:
+            st.error(f"OCR service error: {response.status_code}")
+            return ""
+            
+    except Exception as e:
+        st.error(f"OCR error: {str(e)}")
+        return ""
+
 def parse_uploaded_file(uploaded_file):
     """Parse uploaded file and extract BOQ data"""
     try:
@@ -78,35 +120,54 @@ def parse_uploaded_file(uploaded_file):
             try:
                 import pdfplumber
                 content = ""
+                
+                # Try normal text extraction first
                 with pdfplumber.open(uploaded_file) as pdf:
                     for page in pdf.pages:
                         page_text = page.extract_text()
-                        if page_text:
+                        if page_text and page_text.strip():
                             content += page_text + "\n"
+                
+                # If no text found, try OCR on PDF pages
+                if not content.strip():
+                    st.info("No text found in PDF. Attempting OCR...")
+                    
+                    # Convert PDF pages to images and OCR
+                    uploaded_file.seek(0)  # Reset file pointer
+                    with pdfplumber.open(uploaded_file) as pdf:
+                        for page_num, page in enumerate(pdf.pages):
+                            # Convert page to image
+                            page_image = page.to_image(resolution=200)  # Higher res for better OCR
+                            
+                            # Convert PIL image to bytes
+                            import io
+                            img_bytes = io.BytesIO()
+                            page_image.save(img_bytes, format='PNG')
+                            img_bytes.seek(0)
+                            
+                            # OCR the page
+                            page_text = ocr_with_web_service(img_bytes.getvalue())
+                            if page_text.strip():
+                                content += page_text + "\n"
+                
                 if content.strip():
                     return parse_boq_text(content)
                 else:
-                    st.error("No text found in PDF. The PDF might contain only images.")
+                    st.error("No readable text found in PDF after OCR attempt.")
                     return []
+                    
             except ImportError:
-                st.error("PDF parsing requires 'pdfplumber'. Please install it: pip install pdfplumber")
+                st.error("PDF processing requires 'pdfplumber'. Please install it.")
                 return []
         elif uploaded_file.type.startswith("image/"):
-            try:
-                import pytesseract
-                from PIL import Image
-                image = Image.open(uploaded_file)
-                content = pytesseract.image_to_string(image)
-                if content.strip():
-                    return parse_boq_text(content)
-                else:
-                    st.error("No text found in image. Please ensure the image contains readable text.")
-                    return []
-            except ImportError:
-                st.error("Image OCR requires 'pytesseract' and 'Pillow'. Please install them.")
-                return []
-            except Exception as e:
-                st.error(f"Error processing image: {str(e)}. Make sure tesseract is installed on your system.")
+            # Direct image OCR
+            image_bytes = uploaded_file.read()
+            st.info("Processing image with OCR...")
+            content = ocr_with_web_service(image_bytes)
+            if content.strip():
+                return parse_boq_text(content)
+            else:
+                st.error("No text found in image.")
                 return []
         else:
             st.error("Unsupported file type. Please use .txt, .csv, .pdf, or image files.")
