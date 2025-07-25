@@ -144,15 +144,15 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
             # Get the page
             page = pdf_document[page_num]
             
-            # Convert page to image
-            mat = fitz.Matrix(300/72, 300/72)  # 300 DPI
+            # Convert page to image with higher quality for handwriting
+            mat = fitz.Matrix(400/72, 400/72)  # 400 DPI for better handwriting recognition
             pix = page.get_pixmap(matrix=mat)
             img_data = pix.pil_tobytes(format="PNG")
             
             # Convert to base64
             img_base64 = base64.b64encode(img_data).decode()
             
-            # Make API request
+            # Make API request with settings optimized for handwriting
             payload = {
                 'apikey': OCR_API_KEY,
                 'base64Image': f'data:image/png;base64,{img_base64}',
@@ -160,21 +160,45 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
                 'isOverlayRequired': False,
                 'detectOrientation': True,
                 'scale': True,
-                'OCREngine': 2  # Better for structured data
+                'OCREngine': 2,  # Engine 2 is better for handwriting
+                'isTable': True,  # Help with structured data
+                'filetype': 'PNG'
             }
             
-            response = requests.post(api_url, data=payload)
+            response = requests.post(api_url, data=payload, timeout=30)
             result = response.json()
             
             if result.get('IsErroredOnProcessing') == False:
                 text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
-                all_text.append(text)
+                if text.strip():  # Only add non-empty text
+                    all_text.append(text)
+                else:
+                    st.warning(f"No text found on page {page_num + 1}")
             else:
-                st.warning(f"OCR failed for page {page_num + 1}")
+                error_msg = result.get('ErrorMessage', 'Unknown error')
+                st.warning(f"OCR failed for page {page_num + 1}: {error_msg}")
         
         pdf_document.close()
-        return '\n'.join(all_text)
         
+        combined_text = '\n'.join(all_text)
+        
+        # If no text was extracted, provide helpful message
+        if not combined_text.strip():
+            st.warning("OCR couldn't extract text from this PDF. This might be due to:")
+            st.info("""
+            • Handwritten text (OCR works better with printed text)
+            • Image quality issues
+            • API limitations
+            
+            **Please use the manual input below to enter your data.**
+            """)
+            return None
+            
+        return combined_text
+        
+    except requests.exceptions.Timeout:
+        st.error("OCR request timed out. Please try manual input.")
+        return None
     except Exception as e:
         st.error(f"Cloud OCR Error: {str(e)}")
         return None
@@ -256,18 +280,29 @@ def parse_uploaded_file(uploaded_file):
                     if units:
                         st.info(f"Found {len(units)} unit types in the PDF")
                     else:
-                        st.warning("No valid units found in the extracted text. You can edit the text below.")
+                        st.warning("No valid units found in the extracted text.")
+                        st.info("**Based on your PDF, try entering your data like this:**")
+                        st.code("""x1 1650×560
+x1 1650×150
+x1 2000×850
+x5 2000×350
+x6 2000×150""")
+                        
                         # Allow manual editing
+                        st.markdown("**Or edit the extracted text below:**")
                         edited_text = st.text_area(
-                            "Edit extracted text:",
-                            extracted_text,
-                            height=300,
-                            help="Edit the text to match the expected format: '1x 1650×560' or similar"
+                            "Edit or paste your BOQ data:",
+                            value=extracted_text if extracted_text else "",
+                            height=200,
+                            placeholder="Enter data in format: x1 1650×560",
+                            help="Use formats like: 'x1 1650×560' or '1x 1650×560' or '1 no. 1650×560'"
                         )
                         if st.button("Parse edited text"):
                             units = parse_boq_text(edited_text)
                             if units:
                                 return units
+                            else:
+                                st.error("Still couldn't parse the data. Please check the format.")
                     
                     return units
                 else:
@@ -872,7 +907,7 @@ if uploaded_file is not None:
 # Text Area for Copy/Paste
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    placeholder="",
+    placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
     help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560"
 )
