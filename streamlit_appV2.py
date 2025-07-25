@@ -781,8 +781,8 @@ if "selected_slabs" not in st.session_state:
     st.session_state.selected_slabs = []
 if "unit_input_rows" not in st.session_state:
     st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
-if "scant_slabs" not in st.session_state:
-    st.session_state.scant_slabs = set()  # Track which slabs are scants
+if "selected_slab_info" not in st.session_state:
+    st.session_state.selected_slab_info = {}  # Store complete slab info
 
 # -----------------------------
 # Main UI
@@ -808,33 +808,33 @@ with col2:
 # -----------------------------
 st.sidebar.markdown("### 📐 Available Slab Sizes")
 
-# Define slab sizes with categories - (display_size, actual_size, label)
+# Define slab sizes with categories - (display_size, actual_size, label, slab_type)
 paving_slabs = [
-    ((600, 600), (600, 600), "600×600"),
-    ((900, 600), (900, 600), "900×600"), 
-    ((1800, 700), (1800, 700), "1800×700"),
-    ((1800, 900), (1800, 900), "1800×900")
+    ((600, 600), (600, 600), "600×600", "paving"),
+    ((900, 600), (900, 600), "900×600", "paving"), 
+    ((1800, 700), (1800, 700), "1800×700", "paving"),
+    ((1800, 900), (1800, 900), "1800×900", "paving")
 ]
 
 treads_slabs = [
-    ((900, 500), (900, 500), "900×500"),
-    ((1500, 500), (1500, 500), "1500×500"),
-    ((2000, 500), (2000, 500), "2000×500")
+    ((900, 500), (900, 500), "900×500", "tread"),
+    ((1500, 500), (1500, 500), "1500×500", "tread"),
+    ((2000, 500), (2000, 500), "2000×500", "tread")
 ]
 
 italian_porcelain_slabs = [
-    ((600, 600), (596, 596), "600×600\n(596×596)"),
-    ((900, 450), (897, 446), "900×450\n(897×446)"),
-    ((900, 600), (897, 596), "900×600\n(897×596)"),
-    ((800, 800), (794, 794), "800×800\n(794×794)"),
-    ((1200, 600), (1194, 596), "1200×600\n(1194×596)"),
-    ((1200, 1200), (1194, 1194), "1200×1200\n(1194×1194)")
+    ((600, 600), (596, 596), "600×600\n(596×596)", "porcelain"),
+    ((900, 450), (897, 446), "900×450\n(897×446)", "porcelain"),
+    ((900, 600), (897, 596), "900×600\n(897×596)", "porcelain"),
+    ((800, 800), (794, 794), "800×800\n(794×794)", "porcelain"),
+    ((1200, 600), (1194, 596), "1200×600\n(1194×596)", "porcelain"),
+    ((1200, 1200), (1194, 1194), "1200×1200\n(1194×1194)", "porcelain")
 ]
 
 scants_slabs = [
-    ((1800, 700), (1800, 700), "Britannia\n(1800×700)"),
-    ((1800, 700), (1800, 700), "Portland\n(1800×700)"),
-    ((2000, 1000), (2000, 1000), "Jura\n(2000×1000)")
+    ((1800, 700), (1800, 700, "britannia"), "Britannia\n(1800×700)", "scant"),
+    ((1800, 700), (1800, 700, "portland"), "Portland\n(1800×700)", "scant"),
+    ((2000, 1000), (2000, 1000, "jura"), "Jura\n(2000×1000)", "scant")
 ]
 
 # Create slab buttons with categories and two columns
@@ -848,52 +848,66 @@ def create_slab_buttons(slab_list, category_name):
         
         # First button in pair
         if i < len(slab_list):
-            display_size, actual_size, label = slab_list[i]
-            is_selected = actual_size in st.session_state.selected_slabs
+            display_size, actual_size, label, slab_type = slab_list[i]
+            # Create unique key for each slab
+            slab_key = f"{category_name}_{i}_{actual_size}"
+            is_selected = slab_key in st.session_state.selected_slab_info
             
             with col1:
                 if st.button(
                     f"{'✓ ' if is_selected else ''}{label}",
-                    key=f"slab_{actual_size}_{category_name}_{i}",  # Make key unique per category
+                    key=f"btn_{slab_key}",
                     help=f"Click to {'remove' if is_selected else 'add'} {label}",
                     type="primary" if is_selected else "secondary",
                     use_container_width=True
                 ):
-                    if actual_size in st.session_state.selected_slabs:
-                        st.session_state.selected_slabs.remove(actual_size)
-                        # Remove from scants if it's a scant
-                        if category_name == "Scants":
-                            st.session_state.scant_slabs.discard(actual_size)
+                    if is_selected:
+                        # Remove from selected
+                        del st.session_state.selected_slab_info[slab_key]
+                        # Also remove from legacy selected_slabs if present
+                        if actual_size in st.session_state.selected_slabs:
+                            st.session_state.selected_slabs.remove(actual_size)
                     else:
+                        # Add to selected
+                        st.session_state.selected_slab_info[slab_key] = {
+                            'size': actual_size,
+                            'type': slab_type,
+                            'label': label,
+                            'category': category_name
+                        }
                         st.session_state.selected_slabs.append(actual_size)
-                        # Add to scants if it's a scant
-                        if category_name == "Scants":
-                            st.session_state.scant_slabs.add(actual_size)
                     st.rerun()
         
         # Second button in pair (if exists)
         if i + 1 < len(slab_list):
-            display_size, actual_size, label = slab_list[i + 1]
-            is_selected = actual_size in st.session_state.selected_slabs
+            display_size, actual_size, label, slab_type = slab_list[i + 1]
+            # Create unique key for each slab
+            slab_key = f"{category_name}_{i+1}_{actual_size}"
+            is_selected = slab_key in st.session_state.selected_slab_info
             
             with col2:
                 if st.button(
                     f"{'✓ ' if is_selected else ''}{label}",
-                    key=f"slab_{actual_size}_{category_name}_{i+1}",  # Make key unique per category
+                    key=f"btn_{slab_key}",
                     help=f"Click to {'remove' if is_selected else 'add'} {label}",
                     type="primary" if is_selected else "secondary",
                     use_container_width=True
                 ):
-                    if actual_size in st.session_state.selected_slabs:
-                        st.session_state.selected_slabs.remove(actual_size)
-                        # Remove from scants if it's a scant
-                        if category_name == "Scants":
-                            st.session_state.scant_slabs.discard(actual_size)
+                    if is_selected:
+                        # Remove from selected
+                        del st.session_state.selected_slab_info[slab_key]
+                        # Also remove from legacy selected_slabs if present
+                        if actual_size in st.session_state.selected_slabs:
+                            st.session_state.selected_slabs.remove(actual_size)
                     else:
+                        # Add to selected
+                        st.session_state.selected_slab_info[slab_key] = {
+                            'size': actual_size,
+                            'type': slab_type,
+                            'label': label,
+                            'category': category_name
+                        }
                         st.session_state.selected_slabs.append(actual_size)
-                        # Add to scants if it's a scant
-                        if category_name == "Scants":
-                            st.session_state.scant_slabs.add(actual_size)
                     st.rerun()
         
         # Add spacing between button rows, but not after the last row
@@ -957,8 +971,25 @@ if st.session_state.custom_slabs:
                 del st.session_state.custom_slabs[i]
         st.rerun()
 
-# Combine slabs
-slab_sizes = st.session_state.selected_slabs + st.session_state.custom_slabs
+# Combine slabs - now we need to build a list of unique slabs with their info
+slab_sizes = []
+slab_info_map = {}
+
+# Add selected slabs with their info
+for slab_key, info in st.session_state.selected_slab_info.items():
+    slab_sizes.append(info['size'])
+    slab_info_map[info['size']] = info
+
+# Add custom slabs (these are always regular slabs for cutting)
+for custom_slab in st.session_state.custom_slabs:
+    if custom_slab not in slab_info_map:
+        slab_sizes.append(custom_slab)
+        slab_info_map[custom_slab] = {
+            'size': custom_slab,
+            'type': 'custom',
+            'label': f"{custom_slab[0]}×{custom_slab[1]}",
+            'category': 'Custom'
+        }
 
 st.sidebar.markdown("---")
 
@@ -1336,8 +1367,9 @@ if slab_sizes and st.session_state.units:
         for slab, allocated_units in allocation.items():
             sw, sh = slab
             
-            # Check if this is a scant slab
-            is_scant = slab in st.session_state.scant_slabs
+            # Check if this is a scant slab using the slab_info_map
+            slab_info = slab_info_map.get(slab, {})
+            is_scant = slab_info.get('type') == 'scant'
             
             if is_scant:
                 # For scants, just calculate area without cut optimization
@@ -1354,7 +1386,7 @@ if slab_sizes and st.session_state.units:
                 scants_needed = math.ceil(total_area / scant_area)
                 
                 slab_outputs.append({
-                    "slab": f"{sw}×{sh}",
+                    "slab": slab_info.get('label', f"{sw}×{sh}"),
                     "slab_size": (sw, sh),
                     "units": produced,
                     "cut_length": 0,  # No cuts for scants
@@ -1443,16 +1475,14 @@ if slab_sizes and st.session_state.units:
         
         # Detailed results
         for result in slab_outputs:
-            slab_name = result['slab']
-            # Check if it's a scant and add the name
             if result.get('is_scant'):
-                # Find which scant type this is
-                for _, actual_size, label in scants_slabs:
-                    if actual_size == result['slab_size']:
-                        slab_name = label.replace('\n', ' ')
-                        break
+                # For scants, use the full label
+                header_text = f"{result['slab']} Scant"
+            else:
+                # For regular slabs, just show dimensions
+                header_text = f"{result['slab']}mm Slab"
             
-            with st.expander(f"{slab_name}mm {'Scant' if result.get('is_scant') else 'Slab'}", expanded=True):
+            with st.expander(header_text, expanded=True):
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
