@@ -1207,19 +1207,24 @@ if st.session_state.manual_input_enabled:
                 del st.session_state.unit_input_rows[row_idx]
         st.rerun()
     
-    # Buttons with same spacing as input rows
+    # Add Unit button (only visible when manual input is enabled)
     st.sidebar.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     
-    col1, col2 = st.sidebar.columns(2)
-    
-    if col1.button("➕ Add Unit", type="primary", use_container_width=True):
+    if st.sidebar.button("➕ Add Unit", type="primary", use_container_width=True):
         st.session_state.unit_input_rows.append({"width": "", "height": "", "quantity": 1, "forced": "Any"})
         st.rerun()
+
+# Update List button - ALWAYS VISIBLE, outside manual input section
+st.sidebar.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+st.sidebar.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+
+if st.sidebar.button("📝 Update List", type="secondary", use_container_width=True):
+    # Consolidate units from input rows ONLY if manual input is enabled
+    consolidated_units = {}
     
-    if col2.button("📝 Update List", type="secondary", use_container_width=True):
-        # Consolidate units from input rows
-        consolidated_units = {}
-        
+    # Only process manual input rows if the section is enabled
+    if st.session_state.manual_input_enabled:
         for row_data in st.session_state.unit_input_rows:
             if row_data["width"] and row_data["height"] and row_data["quantity"]:
                 forced_slabs = []
@@ -1241,19 +1246,19 @@ if st.session_state.manual_input_enabled:
                         "quantity": row_data["quantity"],
                         "forced_slabs": forced_slabs
                     }
-        
-        # Update the units list with consolidated data
-        st.session_state.units = []
-        for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
-            st.session_state.units.append({
-                "width": unit_data["width"],
-                "height": unit_data["height"],
-                "quantity": unit_data["quantity"],
-                "forced_slabs": unit_data["forced_slabs"],
-                "order": i
-            })
-        
-        st.rerun()
+    
+    # Update the units list with consolidated data
+    st.session_state.units = []
+    for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+        st.session_state.units.append({
+            "width": unit_data["width"],
+            "height": unit_data["height"],
+            "quantity": unit_data["quantity"],
+            "forced_slabs": unit_data["forced_slabs"],
+            "order": i
+        })
+    
+    st.rerun()
 
 # Show current units
 if st.session_state.units:
