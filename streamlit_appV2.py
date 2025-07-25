@@ -988,6 +988,9 @@ uploaded_file = st.sidebar.file_uploader(
 
 if uploaded_file is not None:
     if st.sidebar.button("Import from File", type="primary", use_container_width=True):
+        # Reset the file pointer to the beginning
+        uploaded_file.seek(0)
+        
         # First, try to extract text from the file
         extracted_text = None
         
@@ -1003,8 +1006,23 @@ if uploaded_file is not None:
                 progress_bar.empty()
                 
             if extracted_text:
-                # Populate the text area with extracted text
-                st.session_state['bulk_text_input'] = extracted_text
+                # Show debug info
+                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
+                    st.text_area("Raw OCR output:", extracted_text, height=200)
+                
+                # Parse the extracted text to see if we can find units
+                units = parse_boq_text(extracted_text)
+                
+                if units:
+                    # If units were found, format them nicely for the text area
+                    boq_text_lines = []
+                    for unit in units:
+                        boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                    st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
+                else:
+                    # If no units found, still populate with the raw extracted text
+                    st.session_state['bulk_text_input'] = extracted_text
+                
                 st.rerun()
         
         elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
@@ -1013,8 +1031,23 @@ if uploaded_file is not None:
                 extracted_text = extract_text_from_image_ocr(image_bytes)
             
             if extracted_text:
-                # Populate the text area with extracted text
-                st.session_state['bulk_text_input'] = extracted_text
+                # Show debug info
+                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
+                    st.text_area("Raw OCR output:", extracted_text, height=200)
+                
+                # Parse the extracted text to see if we can find units
+                units = parse_boq_text(extracted_text)
+                
+                if units:
+                    # If units were found, format them nicely for the text area
+                    boq_text_lines = []
+                    for unit in units:
+                        boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                    st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
+                else:
+                    # If no units found, still populate with the raw extracted text
+                    st.session_state['bulk_text_input'] = extracted_text
+                
                 st.rerun()
         
         # If not PDF/image or OCR failed, process normally
