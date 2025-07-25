@@ -1007,21 +1007,35 @@ if uploaded_file is not None:
                 
             if extracted_text:
                 # Show debug info
-                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
+                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=True):
                     st.text_area("Raw OCR output:", extracted_text, height=200)
+                    st.write(f"Text length: {len(extracted_text)} characters")
                 
                 # Parse the extracted text to see if we can find units
                 units = parse_boq_text(extracted_text)
                 
                 if units:
+                    st.sidebar.success(f"✅ Found {len(units)} unit types in OCR text")
                     # If units were found, format them nicely for the text area
                     boq_text_lines = []
                     for unit in units:
                         boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                    st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
+                    formatted_text = '\n'.join(boq_text_lines)
+                    
+                    # Update session state - try different approach
+                    if 'bulk_text_input' not in st.session_state:
+                        st.session_state.bulk_text_input = formatted_text
+                    else:
+                        st.session_state.bulk_text_input = formatted_text
+                    
+                    st.sidebar.info(f"📝 Formatted text: {formatted_text[:100]}...")
                 else:
+                    st.sidebar.warning("No valid units found in the extracted text.")
                     # If no units found, still populate with the raw extracted text
-                    st.session_state['bulk_text_input'] = extracted_text
+                    if 'bulk_text_input' not in st.session_state:
+                        st.session_state.bulk_text_input = extracted_text
+                    else:
+                        st.session_state.bulk_text_input = extracted_text
                 
                 st.rerun()
         
@@ -1032,21 +1046,35 @@ if uploaded_file is not None:
             
             if extracted_text:
                 # Show debug info
-                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
+                with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=True):
                     st.text_area("Raw OCR output:", extracted_text, height=200)
+                    st.write(f"Text length: {len(extracted_text)} characters")
                 
                 # Parse the extracted text to see if we can find units
                 units = parse_boq_text(extracted_text)
                 
                 if units:
+                    st.sidebar.success(f"✅ Found {len(units)} unit types in OCR text")
                     # If units were found, format them nicely for the text area
                     boq_text_lines = []
                     for unit in units:
                         boq_text_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                    st.session_state['bulk_text_input'] = '\n'.join(boq_text_lines)
+                    formatted_text = '\n'.join(boq_text_lines)
+                    
+                    # Update session state
+                    if 'bulk_text_input' not in st.session_state:
+                        st.session_state.bulk_text_input = formatted_text
+                    else:
+                        st.session_state.bulk_text_input = formatted_text
+                        
+                    st.sidebar.info(f"📝 Formatted text: {formatted_text[:100]}...")
                 else:
+                    st.sidebar.warning("No valid units found in the extracted text.")
                     # If no units found, still populate with the raw extracted text
-                    st.session_state['bulk_text_input'] = extracted_text
+                    if 'bulk_text_input' not in st.session_state:
+                        st.session_state.bulk_text_input = extracted_text
+                    else:
+                        st.session_state.bulk_text_input = extracted_text
                 
                 st.rerun()
         
@@ -1133,12 +1161,17 @@ if uploaded_file is not None:
                 st.rerun()
 
 # Text Area for Copy/Paste
+# Initialize the session state if not exists
+if 'bulk_text_input' not in st.session_state:
+    st.session_state.bulk_text_input = ""
+
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
+    value=st.session_state.bulk_text_input,  # Use value parameter instead of key
     placeholder="x1 1650×560",
     height=120,
     help="Paste your BOQ text. Supports formats like: x1 1650×560, 1x 1650×560, 1 no. 1650×560",
-    key="bulk_text_input"
+    key="bulk_text_area_widget"  # Use a different key for the widget
 )
 
 if bulk_text.strip():
