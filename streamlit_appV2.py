@@ -246,8 +246,9 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         combined_text = '\n'.join(all_text)
         
         # Debug output
-        print(f"Debug extract_text_with_cloud_ocr: Combined text length: {len(combined_text)}")
-        print(f"Debug extract_text_with_cloud_ocr: First 100 chars: {repr(combined_text[:100])}")
+        st.sidebar.write(f"Debug OCR: Combined text length: {len(combined_text)}")
+        if combined_text:
+            st.sidebar.write(f"Debug OCR: First 200 chars: {repr(combined_text[:200])}")
         
         # If no text was extracted, provide helpful message
         if not combined_text.strip():
@@ -994,6 +995,11 @@ if uploaded_file is not None:
                     
                     extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
                     progress_bar.empty()
+                
+                # Immediately show what we got
+                if extracted_text:
+                    with st.sidebar.expander("🔍 Raw Extracted Text", expanded=True):
+                        st.text(extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text)
                     
             elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
                 image_bytes = uploaded_file.read()
@@ -1007,7 +1013,7 @@ if uploaded_file is not None:
             st.sidebar.write("Debug: Type of extracted_text:", type(extracted_text))
             st.sidebar.write("Debug: extracted_text is None?", extracted_text is None)
             
-            if extracted_text:
+            if extracted_text and extracted_text.strip():  # Check for non-empty text
                 # Debug: Show what we extracted
                 st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
                 st.sidebar.write("Debug: First 100 chars:", repr(extracted_text[:100]))
@@ -1035,7 +1041,8 @@ if uploaded_file is not None:
                 
                 st.rerun()
             else:
-                st.sidebar.error("No text extracted from file")
+                st.sidebar.error("No text extracted from file or text was empty")
+                st.sidebar.write("Debug: extracted_text value:", repr(extracted_text))
     
     with col2:
         if st.button("Test Set", type="secondary", use_container_width=True):
