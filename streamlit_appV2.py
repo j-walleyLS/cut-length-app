@@ -987,19 +987,30 @@ if uploaded_file is not None:
             
             if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
                 pdf_bytes = uploaded_file.read()
+                
+                # Test: Set a hardcoded value first
+                st.session_state.boq_extracted_content = "HARDCODED TEST BEFORE OCR"
+                st.sidebar.write("Debug: Set hardcoded value before OCR")
+                
                 with st.spinner("📄 Extracting text from PDF..."):
                     progress_bar = st.progress(0)
                     
                     def update_progress(current, total):
                         progress_bar.progress(current / total)
                     
-                    extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                    # Let's skip OCR and just set a test value
+                    # extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                    extracted_text = """x1 1650×560
+x1 1650×150
+x1 2000×850
+x5 2000×350
+x6 2000×150"""
+                    
+                    st.sidebar.write("Debug: Skipped OCR, using hardcoded BOQ text")
                     progress_bar.empty()
                 
                 # Immediately show what we got
-                if extracted_text:
-                    with st.sidebar.expander("🔍 Raw Extracted Text", expanded=True):
-                        st.text(extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text)
+                st.sidebar.write("Debug: extracted_text =", repr(extracted_text))
                     
             elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
                 image_bytes = uploaded_file.read()
