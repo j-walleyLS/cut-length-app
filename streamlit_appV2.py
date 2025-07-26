@@ -1013,20 +1013,14 @@ if uploaded_file is not None:
             
             st.rerun()
 
-# Show extracted text in a read-only text area if available
+# Show extracted text in a code block if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
     st.sidebar.markdown("**📋 Extracted BOQ Text:**")
-    # Read-only text area to display extracted content
-    st.sidebar.text_area(
-        "Extracted Content (Copy from here)",
-        value=st.session_state.boq_extracted_content,
-        height=120,
-        disabled=True,  # Makes it read-only
-        help="Copy this text and paste it below"
-    )
+    # Use a code block instead of text_area
+    st.sidebar.code(st.session_state.boq_extracted_content, language=None)
     st.sidebar.info("✅ Copy the text above and paste it in the box below")
 
-# Original text area for manual input (this is where "sco" appears)
+# Original text area for manual input
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
     placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
