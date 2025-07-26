@@ -254,6 +254,12 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         return combined_text  # Return even if empty, let caller handle it
         
     except requests.exceptions.Timeout:
+        st.error("OCR request timed out. The file might be too large or complex.")
+        st.info("Please try manual input or use a smaller/clearer image.")
+        return None
+    except Exception as e:
+        st.error(f"Cloud OCR Error: {str(e)}")
+        return None
         
     except requests.exceptions.Timeout:
         st.error("OCR request timed out. The file might be too large or complex.")
