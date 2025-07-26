@@ -740,6 +740,8 @@ if "selected_slab_info" not in st.session_state:
     st.session_state.selected_slab_info = {}  # Store complete slab info
 if "manual_input_enabled" not in st.session_state:
     st.session_state.manual_input_enabled = False  # Default to OFF
+if "boq_extracted_content" not in st.session_state:
+    st.session_state.boq_extracted_content = ""  # Initialize the extracted content
 
 # -----------------------------
 # Main UI
@@ -995,6 +997,10 @@ if uploaded_file is not None:
             extracted_text = str(uploaded_file.read(), "utf-8")
         
         if extracted_text:
+            # Debug: Show what we extracted
+            st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
+            st.sidebar.write("Debug: First 100 chars:", extracted_text[:100])
+            
             # Parse the extracted text
             units = parse_boq_text(extracted_text)
             
@@ -1013,13 +1019,16 @@ if uploaded_file is not None:
             
             st.rerun()
 
+# Debug: Always show what's in session state
+st.sidebar.write("Debug - Session state content:", st.session_state.get('boq_extracted_content', 'EMPTY'))
+
 # Show extracted text if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
     st.sidebar.markdown("**📋 Extracted BOQ Text:**")
-    # Display the actual content using st.text() which is simpler and works
-    container = st.sidebar.container()
-    with container:
-        st.text(st.session_state.boq_extracted_content)
+    
+    # Simple direct display
+    st.sidebar.code(st.session_state.boq_extracted_content)
+    
     st.sidebar.info("✅ Copy the text above and paste it in the box below")
 
 # Original text area for manual input
@@ -1286,6 +1295,7 @@ if st.session_state.units:
     if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
         st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+        st.session_state.boq_extracted_content = ""  # Also clear extracted content
         st.rerun()
 
 # -----------------------------
