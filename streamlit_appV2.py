@@ -1013,11 +1013,18 @@ if uploaded_file is not None:
             
             st.rerun()
 
-# Show extracted text in a code block if available
+# Show extracted text if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
     st.sidebar.markdown("**📋 Extracted BOQ Text:**")
-    # Use a code block instead of text_area
-    st.sidebar.code(st.session_state.boq_extracted_content, language=None)
+    # Just display the text directly using markdown in a box
+    st.sidebar.markdown(
+        f"""
+        <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; font-family: monospace; white-space: pre-wrap;">
+{st.session_state.boq_extracted_content}
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
     st.sidebar.info("✅ Copy the text above and paste it in the box below")
 
 # Original text area for manual input
