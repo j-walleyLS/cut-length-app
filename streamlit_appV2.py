@@ -1016,15 +1016,10 @@ if uploaded_file is not None:
 # Show extracted text if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
     st.sidebar.markdown("**📋 Extracted BOQ Text:**")
-    # Just display the text directly using markdown in a box
-    st.sidebar.markdown(
-        f"""
-        <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; font-family: monospace; white-space: pre-wrap;">
-{st.session_state.boq_extracted_content}
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
+    # Display the actual content using st.text() which is simpler and works
+    container = st.sidebar.container()
+    with container:
+        st.text(st.session_state.boq_extracted_content)
     st.sidebar.info("✅ Copy the text above and paste it in the box below")
 
 # Original text area for manual input
