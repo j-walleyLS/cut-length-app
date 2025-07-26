@@ -245,6 +245,10 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         
         combined_text = '\n'.join(all_text)
         
+        # Debug output
+        print(f"Debug extract_text_with_cloud_ocr: Combined text length: {len(combined_text)}")
+        print(f"Debug extract_text_with_cloud_ocr: First 100 chars: {repr(combined_text[:100])}")
+        
         # If no text was extracted, provide helpful message
         if not combined_text.strip():
             st.warning("OCR couldn't extract text from this PDF. This might be due to:")
@@ -970,53 +974,72 @@ uploaded_file = st.sidebar.file_uploader(
 )
 
 if uploaded_file is not None:
-    if st.sidebar.button("📄 Extract Text", type="primary", use_container_width=True):
-        # Reset the file pointer to the beginning
-        uploaded_file.seek(0)
-        
-        # Extract text based on file type
-        extracted_text = None
-        
-        if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
-            pdf_bytes = uploaded_file.read()
-            with st.spinner("📄 Extracting text from PDF..."):
-                progress_bar = st.progress(0)
-                
-                def update_progress(current, total):
-                    progress_bar.progress(current / total)
-                
-                extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
-                progress_bar.empty()
-                
-        elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
-            image_bytes = uploaded_file.read()
-            with st.spinner("🖼️ Extracting text from image..."):
-                extracted_text = extract_text_from_image_ocr(image_bytes)
-                
-        elif uploaded_file.type in ["text/plain", "text/csv"]:
-            extracted_text = str(uploaded_file.read(), "utf-8")
-        
-        if extracted_text:
-            # Debug: Show what we extracted
-            st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
-            st.sidebar.write("Debug: First 100 chars:", extracted_text[:100])
+    # Test button to set a known value
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        if st.button("📄 Extract Text", type="primary", use_container_width=True):
+            # Reset the file pointer to the beginning
+            uploaded_file.seek(0)
             
-            # Parse the extracted text
-            units = parse_boq_text(extracted_text)
+            # Extract text based on file type
+            extracted_text = None
             
-            if units:
-                # Format as BOQ lines
-                boq_lines = []
-                for unit in units:
-                    boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                formatted_text = '\n'.join(boq_lines)
-                st.session_state.boq_extracted_content = formatted_text
-                st.sidebar.success(f"✅ Found {len(units)} units!")
+            if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
+                pdf_bytes = uploaded_file.read()
+                with st.spinner("📄 Extracting text from PDF..."):
+                    progress_bar = st.progress(0)
+                    
+                    def update_progress(current, total):
+                        progress_bar.progress(current / total)
+                    
+                    extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                    progress_bar.empty()
+                    
+            elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
+                image_bytes = uploaded_file.read()
+                with st.spinner("🖼️ Extracting text from image..."):
+                    extracted_text = extract_text_from_image_ocr(image_bytes)
+                    
+            elif uploaded_file.type in ["text/plain", "text/csv"]:
+                extracted_text = str(uploaded_file.read(), "utf-8")
+            
+            # Debug the extraction
+            st.sidebar.write("Debug: Type of extracted_text:", type(extracted_text))
+            st.sidebar.write("Debug: extracted_text is None?", extracted_text is None)
+            
+            if extracted_text:
+                # Debug: Show what we extracted
+                st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
+                st.sidebar.write("Debug: First 100 chars:", repr(extracted_text[:100]))
+                
+                # Parse the extracted text
+                units = parse_boq_text(extracted_text)
+                
+                st.sidebar.write("Debug: Found units:", len(units) if units else 0)
+                
+                if units:
+                    # Format as BOQ lines
+                    boq_lines = []
+                    for unit in units:
+                        boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                    formatted_text = '\n'.join(boq_lines)
+                    
+                    st.sidebar.write("Debug: Formatted text:", repr(formatted_text[:100]))
+                    st.session_state.boq_extracted_content = formatted_text
+                    st.sidebar.success(f"✅ Found {len(units)} units!")
+                else:
+                    # Store raw text if no units found
+                    st.sidebar.write("Debug: Storing raw text")
+                    st.session_state.boq_extracted_content = extracted_text
+                    st.sidebar.warning("No BOQ patterns found in extracted text.")
+                
+                st.rerun()
             else:
-                # Store raw text if no units found
-                st.session_state.boq_extracted_content = extracted_text
-                st.sidebar.warning("No BOQ patterns found in extracted text.")
-            
+                st.sidebar.error("No text extracted from file")
+    
+    with col2:
+        if st.button("Test Set", type="secondary", use_container_width=True):
+            st.session_state.boq_extracted_content = "TEST VALUE: x1 1650×560"
             st.rerun()
 
 # Debug: Always show what's in session state
