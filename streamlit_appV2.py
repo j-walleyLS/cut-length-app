@@ -1012,7 +1012,9 @@ if uploaded_file is not None:
     with col2:
         if st.button("Test Set", type="secondary", use_container_width=True):
             st.session_state.boq_extracted_content = "TEST VALUE: x1 1650×560"
-            st.rerun()dcoded BOQ text")
+                            st.rerun()
+            else:
+                st.sidebar.error("No text extracted from file")
                     progress_bar.empty()
                 
                 # Immediately show what we got
