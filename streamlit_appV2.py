@@ -245,11 +245,6 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         
         combined_text = '\n'.join(all_text)
         
-        # Debug output
-        st.sidebar.write(f"Debug OCR: Combined text length: {len(combined_text)}")
-        if combined_text:
-            st.sidebar.write(f"Debug OCR: First 200 chars: {repr(combined_text[:200])}")
-        
         # If no text was extracted, provide helpful message
         if not combined_text.strip():
             st.warning("OCR couldn't extract text from this PDF. This might be due to:")
@@ -383,10 +378,6 @@ def parse_uploaded_file(uploaded_file):
                     extracted_text = extract_text_from_image_ocr(image_bytes)
                 
                 if extracted_text:
-                    # Show what was extracted for debugging
-                    with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
-                        st.text_area("Raw OCR output:", extracted_text, height=200)
-                    
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
@@ -975,109 +966,155 @@ uploaded_file = st.sidebar.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Test button to set a known value
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        if st.button("📄 Extract Text", type="primary", use_container_width=True):
-            # Reset the file pointer to the beginning
-            uploaded_file.seek(0)
+    if st.sidebar.button("📄 Extract Text", type="primary", use_container_width=True):
+        # Reset the file pointer to the beginning
+        uploaded_file.seek(0)
+        
+        # Extract text based on file type
+        extracted_text = None
+        
+        if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
+            pdf_bytes = uploaded_file.read()
             
-            # Extract text based on file type
-            extracted_text = None
+            with st.spinner("📄 Extracting text from PDF..."):
+                progress_bar = st.progress(0)
+                
+                def update_progress(current, total):
+                    progress_bar.progress(current / total)
+                
+                extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                progress_bar.empty()
+                    
+        elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
+            image_bytes = uploaded_file.read()
+            with st.spinner("🖼️ Extracting text from image..."):
+                extracted_text = extract_text_from_image_ocr(image_bytes)
+                
+        elif uploaded_file.type in ["text/plain", "text/csv"]:
+            extracted_text = str(uploaded_file.read(), "utf-8")
+        
+        if extracted_text and extracted_text.strip():
+            # Parse the extracted text
+            units = parse_boq_text(extracted_text)
             
-            if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
-                pdf_bytes = uploaded_file.read()
+            if units:
+                # Format as BOQ lines
+                boq_lines = []
+                for unit in units:
+                    boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                formatted_text = '\n'.join(boq_lines)
                 
-                # Test: Set a hardcoded value first
-                st.session_state.boq_extracted_content = "HARDCODED TEST BEFORE OCR"
-                st.sidebar.write("Debug: Set hardcoded value before OCR")
-                
-                with st.spinner("📄 Extracting text from PDF..."):
-                    progress_bar = st.progress(0)
-                    
-                    def update_progress(current, total):
-                        progress_bar.progress(current / total)
-                    
-                    # Let's skip OCR and just set a test value
-                    # extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
-                    extracted_text = """x1 1650×560
-x1 1650×150
-x1 2000×850
-x5 2000×350
-x6 2000×150"""
-                    
-                    st.sidebar.write("Debug: Skipped OCR, using hardcoded BOQ text")
-                    progress_bar.empty()
-                
-                # Immediately show what we got
-                st.sidebar.write("Debug: extracted_text =", repr(extracted_text))
-                    
-            elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
-                image_bytes = uploaded_file.read()
-                with st.spinner("🖼️ Extracting text from image..."):
-                    extracted_text = extract_text_from_image_ocr(image_bytes)
-                    
-            elif uploaded_file.type in ["text/plain", "text/csv"]:
-                extracted_text = str(uploaded_file.read(), "utf-8")
-            
-            # Debug the extraction
-            st.sidebar.write("Debug: Type of extracted_text:", type(extracted_text))
-            st.sidebar.write("Debug: extracted_text is None?", extracted_text is None)
-            
-            if extracted_text and extracted_text.strip():  # Check for non-empty text
-                # Debug: Show what we extracted
-                st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
-                st.sidebar.write("Debug: First 100 chars:", repr(extracted_text[:100]))
-                
-                # Parse the extracted text
-                units = parse_boq_text(extracted_text)
-                
-                st.sidebar.write("Debug: Found units:", len(units) if units else 0)
-                
-                if units:
-                    # Format as BOQ lines
-                    boq_lines = []
-                    for unit in units:
-                        boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                    formatted_text = '\n'.join(boq_lines)
-                    
-                    st.sidebar.write("Debug: Formatted text:", repr(formatted_text[:100]))
-                    st.session_state.boq_extracted_content = formatted_text
-                    st.sidebar.success(f"✅ Found {len(units)} units!")
-                else:
-                    # Store raw text if no units found
-                    st.sidebar.write("Debug: Storing raw text")
-                    st.session_state.boq_extracted_content = extracted_text
-                    st.sidebar.warning("No BOQ patterns found in extracted text.")
-                
-                st.rerun()
+                st.session_state.boq_extracted_content = formatted_text
+                st.sidebar.success(f"✅ Found {len(units)} units in the extracted text!")
             else:
-                st.sidebar.error("No text extracted from file or text was empty")
-                st.sidebar.write("Debug: extracted_text value:", repr(extracted_text))
-    
-    with col2:
-        if st.button("Test Set", type="secondary", use_container_width=True):
-            st.session_state.boq_extracted_content = "TEST VALUE: x1 1650×560"
+                # Store raw text if no units found
+                st.session_state.boq_extracted_content = extracted_text
+                st.sidebar.warning("No BOQ patterns found. Raw text has been extracted.")
+            
             st.rerun()
+        else:
+            st.sidebar.error("No text extracted from file")
 
-# Debug: Always show what's in session state
-st.sidebar.write("Debug - Session state content:", st.session_state.get('boq_extracted_content', 'EMPTY'))
+# Initialize the BOQ content if not exists
+if 'boq_extracted_content' not in st.session_state:
+    st.session_state.boq_extracted_content = ""
 
 # Show extracted text if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
     st.sidebar.markdown("**📋 Extracted BOQ Text:**")
     
-    # Simple direct display
+    # Display extracted text
     st.sidebar.code(st.session_state.boq_extracted_content)
     
-    st.sidebar.info("✅ Copy the text above and paste it in the box below")
+    # Add Import from Extract button
+    if st.sidebar.button("📥 Import from Extract", type="primary", use_container_width=True):
+        imported_units = parse_boq_text(st.session_state.boq_extracted_content)
+        if imported_units:
+            # First, consolidate any existing manual input rows and existing units
+            consolidated_units = {}
+            
+            # Add existing units from the list
+            for unit in st.session_state.units:
+                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
+                unit_key = (unit["width"], unit["height"], forced_key)
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": unit.get("forced_slabs", [])
+                    }
+            
+            # Add any units from manual input rows (only if enabled)
+            if st.session_state.manual_input_enabled:
+                for row_data in st.session_state.unit_input_rows:
+                    if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                        forced_slabs = []
+                        if row_data["forced"] and row_data["forced"] != "Any":
+                            for slab in slab_sizes:
+                                if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                                    forced_slabs = [slab]
+                                    break
+                        
+                        forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                        unit_key = (row_data["width"], row_data["height"], forced_key)
+                        
+                        if unit_key in consolidated_units:
+                            consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                        else:
+                            consolidated_units[unit_key] = {
+                                "width": row_data["width"],
+                                "height": row_data["height"],
+                                "quantity": row_data["quantity"],
+                                "forced_slabs": forced_slabs
+                            }
+            
+            # Add imported units to consolidated list
+            for unit in imported_units:
+                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": []
+                    }
+            
+            # Update the session state with all consolidated units
+            st.session_state.units = []
+            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+                st.session_state.units.append({
+                    "width": unit_data["width"],
+                    "height": unit_data["height"],
+                    "quantity": unit_data["quantity"],
+                    "forced_slabs": unit_data["forced_slabs"],
+                    "order": i
+                })
+            
+            # Clear manual input rows after successful import
+            st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+            
+            # Clear the extracted text after successful import
+            st.session_state.boq_extracted_content = ""
+            
+            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
+            st.rerun()
+        else:
+            st.sidebar.error("❌ No valid units found in the extracted text.")
 
-# Original text area for manual input
+# Text area for manual input
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
     placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
-    help="Paste your BOQ text here"
+    help="Paste your BOQ text here",
+    key="boq_text_input"
 )
 
 if bulk_text.strip():
@@ -1153,9 +1190,6 @@ if bulk_text.strip():
             
             # Clear manual input rows after successful import
             st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
-            
-            # Clear the extracted text
-            st.session_state.boq_extracted_content = ""
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
@@ -1537,3 +1571,4 @@ elif not st.session_state.units:
 
 else:
     st.info("👆 Please select slab sizes and add finished units to begin optimization.")
+    
