@@ -736,8 +736,8 @@ if "selected_slab_info" not in st.session_state:
     st.session_state.selected_slab_info = {}  # Store complete slab info
 if "manual_input_enabled" not in st.session_state:
     st.session_state.manual_input_enabled = False  # Default to OFF
-if "boq_extracted_content" not in st.session_state:
-    st.session_state.boq_extracted_content = ""  # Initialize the extracted content
+if "bulk_text_content" not in st.session_state:
+    st.session_state.bulk_text_content = ""  # Initialize the bulk text content
 
 # -----------------------------
 # Main UI
@@ -966,6 +966,7 @@ uploaded_file = st.sidebar.file_uploader(
 )
 
 if uploaded_file is not None:
+    # Extract text button
     if st.sidebar.button("📄 Extract Text", type="primary", use_container_width=True):
         # Reset the file pointer to the beginning
         uploaded_file.seek(0)
@@ -1004,118 +1005,31 @@ if uploaded_file is not None:
                     boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
                 formatted_text = '\n'.join(boq_lines)
                 
-                st.session_state.boq_extracted_content = formatted_text
-                st.sidebar.success(f"✅ Found {len(units)} units in the extracted text!")
+                # Update the session state to populate the text area
+                st.session_state.bulk_text_content = formatted_text
+                st.sidebar.success(f"✅ Found {len(units)} units!")
             else:
                 # Store raw text if no units found
-                st.session_state.boq_extracted_content = extracted_text
-                st.sidebar.warning("No BOQ patterns found. Raw text has been extracted.")
+                st.session_state.bulk_text_content = extracted_text
+                st.sidebar.warning("No BOQ patterns found in extracted text.")
             
             st.rerun()
         else:
             st.sidebar.error("No text extracted from file")
 
-# Initialize the BOQ content if not exists
-if 'boq_extracted_content' not in st.session_state:
-    st.session_state.boq_extracted_content = ""
-
-# Show extracted text if available
-if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
-    st.sidebar.markdown("**📋 Extracted BOQ Text:**")
-    
-    # Display extracted text
-    st.sidebar.code(st.session_state.boq_extracted_content)
-    
-    # Add Import from Extract button
-    if st.sidebar.button("📥 Import from Extract", type="primary", use_container_width=True):
-        imported_units = parse_boq_text(st.session_state.boq_extracted_content)
-        if imported_units:
-            # First, consolidate any existing manual input rows and existing units
-            consolidated_units = {}
-            
-            # Add existing units from the list
-            for unit in st.session_state.units:
-                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
-                unit_key = (unit["width"], unit["height"], forced_key)
-                
-                if unit_key in consolidated_units:
-                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                else:
-                    consolidated_units[unit_key] = {
-                        "width": unit["width"],
-                        "height": unit["height"],
-                        "quantity": unit["quantity"],
-                        "forced_slabs": unit.get("forced_slabs", [])
-                    }
-            
-            # Add any units from manual input rows (only if enabled)
-            if st.session_state.manual_input_enabled:
-                for row_data in st.session_state.unit_input_rows:
-                    if row_data["width"] and row_data["height"] and row_data["quantity"]:
-                        forced_slabs = []
-                        if row_data["forced"] and row_data["forced"] != "Any":
-                            for slab in slab_sizes:
-                                if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
-                                    forced_slabs = [slab]
-                                    break
-                        
-                        forced_key = tuple(forced_slabs[0]) if forced_slabs else None
-                        unit_key = (row_data["width"], row_data["height"], forced_key)
-                        
-                        if unit_key in consolidated_units:
-                            consolidated_units[unit_key]["quantity"] += row_data["quantity"]
-                        else:
-                            consolidated_units[unit_key] = {
-                                "width": row_data["width"],
-                                "height": row_data["height"],
-                                "quantity": row_data["quantity"],
-                                "forced_slabs": forced_slabs
-                            }
-            
-            # Add imported units to consolidated list
-            for unit in imported_units:
-                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
-                
-                if unit_key in consolidated_units:
-                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
-                else:
-                    consolidated_units[unit_key] = {
-                        "width": unit["width"],
-                        "height": unit["height"],
-                        "quantity": unit["quantity"],
-                        "forced_slabs": []
-                    }
-            
-            # Update the session state with all consolidated units
-            st.session_state.units = []
-            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
-                st.session_state.units.append({
-                    "width": unit_data["width"],
-                    "height": unit_data["height"],
-                    "quantity": unit_data["quantity"],
-                    "forced_slabs": unit_data["forced_slabs"],
-                    "order": i
-                })
-            
-            # Clear manual input rows after successful import
-            st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
-            
-            # Clear the extracted text after successful import
-            st.session_state.boq_extracted_content = ""
-            
-            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
-            st.rerun()
-        else:
-            st.sidebar.error("❌ No valid units found in the extracted text.")
-
-# Text area for manual input
+# Text area for manual input - now uses session state value
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
+    value=st.session_state.bulk_text_content,  # Use session state value
     placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
     help="Paste your BOQ text here",
-    key="boq_text_input"
+    key="bulk_text_area"
 )
+
+# Update session state when text area changes
+if bulk_text != st.session_state.bulk_text_content:
+    st.session_state.bulk_text_content = bulk_text
 
 if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
@@ -1190,6 +1104,9 @@ if bulk_text.strip():
             
             # Clear manual input rows after successful import
             st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+            
+            # Clear the bulk text content after successful import
+            st.session_state.bulk_text_content = ""
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
@@ -1370,11 +1287,204 @@ if st.session_state.units:
     if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
         st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
-        st.session_state.boq_extracted_content = ""  # Also clear extracted content
+        st.session_state.bulk_text_content = ""  # Also clear bulk text content
         st.rerun()
 
 # -----------------------------
 # Main Results Section - COMPLETELY NEW ALGORITHM
 # -----------------------------
 if slab_sizes and st.session_state.units:
+    st.header("📊 Optimization Results")
     
+    with st.spinner("Optimizing cut layouts..."):
+        # STEP 1: Find optimal allocation (each unit goes to ONE slab type only)
+        allocation = optimize_unit_allocation(st.session_state.units, slab_sizes)
+        
+        # STEP 2: Generate results ONLY for allocated slabs
+        slab_outputs = []
+        global_boqlines = {}
+        
+        for slab, allocated_units in allocation.items():
+            sw, sh = slab
+            
+            # Check if this is a scant slab using the slab_info_map
+            slab_info = slab_info_map.get(slab, {})
+            is_scant = slab_info.get('type') == 'scant'
+            
+            if is_scant:
+                # For scants, just calculate area without cut optimization
+                total_area = 0
+                produced = {}
+                
+                for unit in allocated_units:
+                    qty = unit["quantity"]
+                    produced[unit["order"]] = qty
+                    total_area += unit["width"] * unit["height"] * qty
+                
+                # Calculate number of scants needed
+                scant_area = sw * sh
+                scants_needed = math.ceil(total_area / scant_area)
+                
+                slab_outputs.append({
+                    "slab": slab_info.get('label', f"{sw}×{sh}"),
+                    "slab_size": (sw, sh),
+                    "units": produced,
+                    "cut_length": 0,  # No cuts for scants
+                    "area": total_area,
+                    "waste_area": (scants_needed * scant_area) - total_area,
+                    "efficiency": (total_area / (scants_needed * scant_area)) * 100 if scants_needed > 0 else 0,
+                    "slab_count": scants_needed,
+                    "is_scant": True
+                })
+                
+                # Build global BOQ
+                for order, qty in produced.items():
+                    original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                    key = (original_unit['width'], original_unit['height'])
+                    global_boqlines[key] = global_boqlines.get(key, 0) + qty
+                    
+            else:
+                # Regular slab processing with cut optimization
+                remaining = copy.deepcopy(allocated_units)
+                produced = {}
+                cut_length = 0
+                slab_count = 0
+                
+                # Pack slabs until all allocated units are produced
+                while any(u["quantity"] > 0 for u in remaining):
+                    best = pack_one_slab(sw, sh, remaining)
+                    if not best["layout"]:
+                        break
+                    
+                    slab_count += 1
+                    counts = {}
+                    for p in best["layout"]:
+                        counts[p.unit_order] = counts.get(p.unit_order, 0) + 1
+                    
+                    for u in remaining:
+                        if u["order"] in counts:
+                            used = counts[u["order"]]
+                            u["quantity"] -= used
+                            produced[u["order"]] = produced.get(u["order"], 0) + used
+                    
+                    cut_length += best["cost"]
+                
+                if produced:  # Only add if something was actually produced
+                    # Calculate areas using original units for reference
+                    area = 0
+                    for order, qty in produced.items():
+                        original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                        area += original_unit["width"] * original_unit["height"] * qty
+                    
+                    waste_area = (sw * sh * slab_count) - area
+                    efficiency = (area / (sw * sh * slab_count)) * 100 if slab_count > 0 else 0
+                    
+                    slab_outputs.append({
+                        "slab": f"{sw}×{sh}",
+                        "slab_size": (sw, sh),
+                        "units": produced,
+                        "cut_length": cut_length,
+                        "area": area,
+                        "waste_area": waste_area,
+                        "efficiency": efficiency,
+                        "slab_count": slab_count,
+                        "is_scant": False
+                    })
+                    
+                    # Build global BOQ
+                    for order, qty in produced.items():
+                        original_unit = next(u for u in st.session_state.units if u["order"] == order)
+                        key = (original_unit['width'], original_unit['height'])
+                        global_boqlines[key] = global_boqlines.get(key, 0) + qty
+    
+    if slab_outputs:
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        total_slabs = sum(result["slab_count"] for result in slab_outputs)
+        total_cut_length = sum(result["cut_length"] for result in slab_outputs)
+        total_produced_area = sum(result["area"] for result in slab_outputs)
+        avg_efficiency = sum(result["efficiency"] for result in slab_outputs) / len(slab_outputs)
+        
+        col1.metric("Total Slabs", total_slabs)
+        col2.metric("Total Cut Length", f"{total_cut_length / 1000:.2f} m")
+        col3.metric("Produced Area", f"{total_produced_area / 1e6:.2f} m²")
+        col4.metric("Avg Efficiency", f"{avg_efficiency:.1f}%")
+        
+        st.markdown("---")
+        
+        # Detailed results
+        for result in slab_outputs:
+            if result.get('is_scant'):
+                # For scants, use the full label
+                header_text = f"{result['slab']} Scant"
+            else:
+                # For regular slabs, just show dimensions
+                header_text = f"{result['slab']}mm Slab"
+            
+            with st.expander(header_text, expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric(f"No. of {'Scants' if result.get('is_scant') else 'Slabs'} Used", result['slab_count'])
+                
+                with col2:
+                    if result.get('is_scant'):
+                        st.metric("Total Area Required", f"{result['area'] / 1e6:.2f} m²")
+                    else:
+                        st.metric("Cut Length", f"{result['cut_length'] / 1000:.2f} m")
+                
+                with col3:
+                    metric_label = 'Material' if result.get('is_scant') else 'Total'
+                    st.metric(f"{metric_label} Area", f"{result['area'] / 1e6:.2f} m²")
+                
+                with col4:
+                    st.markdown("**Units Produced:**")
+                    for order in sorted(result["units"]):
+                        u = next(u for u in st.session_state.units if u["order"] == order)
+                        qty = result['units'][order]
+                        st.markdown(f"<div style='margin-bottom: 0px; line-height: 1.2;'>• {qty}no. {u['width']}×{u['height']}mm</div>", unsafe_allow_html=True)
+        
+        # Global summary
+        if global_boqlines:
+            st.markdown("---")
+            st.subheader("📋 Overall Bill of Quantities")
+            st.markdown("**Total units to be produced:**")
+            
+            for (w, h), qty in sorted(global_boqlines.items()):
+                st.markdown(f"• **{qty}no.** {w}×{h}mm")
+        
+        # Check for unproduced units
+        produced_units = {}
+        for result in slab_outputs:
+            for order, qty in result["units"].items():
+                produced_units[order] = produced_units.get(order, 0) + qty
+        
+        unproduced = []
+        for u in st.session_state.units:
+            produced_qty = produced_units.get(u["order"], 0)
+            if produced_qty < u["quantity"]:
+                unproduced.append({
+                    "unit": u,
+                    "missing": u["quantity"] - produced_qty
+                })
+        
+        if unproduced:
+            st.markdown("---")
+            st.error("⚠️ **Some units could not be produced:**")
+            for item in unproduced:
+                u = item["unit"]
+                missing = item["missing"]
+                st.markdown(f"• **{missing}no.** {u['width']}×{u['height']}mm (too large for selected slabs)")
+    
+    else:
+        st.warning("⚠️ No units could be produced with the selected slab sizes. Please check your unit dimensions and slab selections.")
+
+elif not slab_sizes:
+    st.info("👆 Please select at least one slab size from the sidebar to begin optimization.")
+
+elif not st.session_state.units:
+    st.info("👆 Please add some finished units using the sidebar form to begin optimization.")
+
+else:
+    st.info("👆 Please select slab sizes and add finished units to begin optimization.")
