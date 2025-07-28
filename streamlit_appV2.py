@@ -527,7 +527,12 @@ def get_viable_slabs_for_unit(unit, slab_sizes):
 
 def calculate_packing_efficiency(unit_types, slab, max_iterations=5):
     """Calculate how efficiently unit types pack into a given slab size"""
-    slab_width, slab_height = slab
+    # Handle both regular slabs (width, height) and scants (width, height, name)
+    if len(slab) == 2:
+        slab_width, slab_height = slab
+    else:  # Scant slab with 3 values
+        slab_width, slab_height = slab[0], slab[1]
+    
     slab_area = slab_width * slab_height
     
     # Create test units for efficiency calculation
@@ -595,7 +600,13 @@ def optimize_unit_allocation(units, slab_sizes):
         # For free units, find the single best slab
         viable_slabs = []
         for slab in slab_sizes:
-            if can_unit_fit_in_slab(unit, slab[0], slab[1]):
+            # Extract width and height from slab (handle both 2-tuple and 3-tuple)
+            if len(slab) == 2:
+                slab_width, slab_height = slab
+            else:  # Scant slab
+                slab_width, slab_height = slab[0], slab[1]
+                
+            if can_unit_fit_in_slab(unit, slab_width, slab_height):
                 viable_slabs.append(slab)
         
         if not viable_slabs:
@@ -613,8 +624,13 @@ def optimize_unit_allocation(units, slab_sizes):
             if efficiency <= 0:
                 continue  # Skip slabs where nothing fits
             
-            # Calculate how many slabs would actually be needed
-            slab_area = slab[0] * slab[1]
+            # Extract dimensions properly
+            if len(slab) == 2:
+                slab_width, slab_height = slab
+            else:
+                slab_width, slab_height = slab[0], slab[1]
+                
+            slab_area = slab_width * slab_height
             unit_area = unit["width"] * unit["height"] * unit["quantity"]
             
             # Estimate slabs needed based on efficiency
@@ -1388,7 +1404,11 @@ if slab_sizes and st.session_state.units:
         global_boqlines = {}
         
         for slab, allocated_units in allocation.items():
-            sw, sh = slab
+            # Extract dimensions properly for both regular and scant slabs
+            if len(slab) == 2:
+                sw, sh = slab
+            else:  # Scant slab with name
+                sw, sh = slab[0], slab[1]
             
             # Check if this is a scant slab using the slab_info_map
             slab_info = slab_info_map.get(slab, {})
@@ -1571,4 +1591,3 @@ elif not st.session_state.units:
 
 else:
     st.info("👆 Please select slab sizes and add finished units to begin optimization.")
-    
