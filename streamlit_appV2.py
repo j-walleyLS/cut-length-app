@@ -246,9 +246,8 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         combined_text = '\n'.join(all_text)
         
         # Debug output
-        st.sidebar.write(f"Debug OCR: Combined text length: {len(combined_text)}")
         if combined_text:
-            st.sidebar.write(f"Debug OCR: First 200 chars: {repr(combined_text[:200])}")
+            st.sidebar.info(f"Extracted {len(combined_text)} characters from {total_pages} page(s)")
         
         # If no text was extracted, provide helpful message
         if not combined_text.strip():
@@ -988,29 +987,16 @@ if uploaded_file is not None:
             if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
                 pdf_bytes = uploaded_file.read()
                 
-                # Test: Set a hardcoded value first
-                st.session_state.boq_extracted_content = "HARDCODED TEST BEFORE OCR"
-                st.sidebar.write("Debug: Set hardcoded value before OCR")
-                
                 with st.spinner("📄 Extracting text from PDF..."):
                     progress_bar = st.progress(0)
                     
                     def update_progress(current, total):
                         progress_bar.progress(current / total)
                     
-                    # Let's skip OCR and just set a test value
-                    # extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
-                    extracted_text = """x1 1650×560
-x1 1650×150
-x1 2000×850
-x5 2000×350
-x6 2000×150"""
+                    # Perform actual OCR extraction
+                    extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
                     
-                    st.sidebar.write("Debug: Skipped OCR, using hardcoded BOQ text")
                     progress_bar.empty()
-                
-                # Immediately show what we got
-                st.sidebar.write("Debug: extracted_text =", repr(extracted_text))
                     
             elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
                 image_bytes = uploaded_file.read()
@@ -1021,18 +1007,9 @@ x6 2000×150"""
                 extracted_text = str(uploaded_file.read(), "utf-8")
             
             # Debug the extraction
-            st.sidebar.write("Debug: Type of extracted_text:", type(extracted_text))
-            st.sidebar.write("Debug: extracted_text is None?", extracted_text is None)
-            
             if extracted_text and extracted_text.strip():  # Check for non-empty text
-                # Debug: Show what we extracted
-                st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
-                st.sidebar.write("Debug: First 100 chars:", repr(extracted_text[:100]))
-                
                 # Parse the extracted text
                 units = parse_boq_text(extracted_text)
-                
-                st.sidebar.write("Debug: Found units:", len(units) if units else 0)
                 
                 if units:
                     # Format as BOQ lines
@@ -1041,27 +1018,21 @@ x6 2000×150"""
                         boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
                     formatted_text = '\n'.join(boq_lines)
                     
-                    st.sidebar.write("Debug: Formatted text:", repr(formatted_text[:100]))
                     st.session_state.boq_extracted_content = formatted_text
                     st.sidebar.success(f"✅ Found {len(units)} units!")
                 else:
                     # Store raw text if no units found
-                    st.sidebar.write("Debug: Storing raw text")
                     st.session_state.boq_extracted_content = extracted_text
                     st.sidebar.warning("No BOQ patterns found in extracted text.")
                 
                 st.rerun()
             else:
                 st.sidebar.error("No text extracted from file or text was empty")
-                st.sidebar.write("Debug: extracted_text value:", repr(extracted_text))
     
     with col2:
-        if st.button("Test Set", type="secondary", use_container_width=True):
-            st.session_state.boq_extracted_content = "TEST VALUE: x1 1650×560"
+        if st.button("Clear Extract", type="secondary", use_container_width=True):
+            st.session_state.boq_extracted_content = ""
             st.rerun()
-
-# Debug: Always show what's in session state
-st.sidebar.write("Debug - Session state content:", st.session_state.get('boq_extracted_content', 'EMPTY'))
 
 # Show extracted text if available
 if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
