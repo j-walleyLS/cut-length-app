@@ -796,9 +796,9 @@ italian_porcelain_slabs = [
 ]
 
 scants_slabs = [
-    ((1800, 700), (1800, 700, "britannia"), "Britannia\n(1800×700)", "scant"),
-    ((1800, 700), (1800, 700, "portland"), "Portland\n(1800×700)", "scant"),
-    ((2000, 1000), (2000, 1000, "jura"), "Jura\n(2000×1000)", "scant")
+    ((1800, 700), (1800, 700), "Britannia\n(1800×700)", "scant"),
+    ((1800, 700), (1800, 700), "Portland\n(1800×700)", "scant"),
+    ((2000, 1000), (2000, 1000), "Jura\n(2000×1000)", "scant")
 ]
 
 # Create slab buttons with categories and two columns
