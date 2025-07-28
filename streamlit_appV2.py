@@ -246,8 +246,9 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         combined_text = '\n'.join(all_text)
         
         # Debug output
+        st.sidebar.write(f"Debug OCR: Combined text length: {len(combined_text)}")
         if combined_text:
-            st.sidebar.info(f"Extracted {len(combined_text)} characters from {total_pages} page(s)")
+            st.sidebar.write(f"Debug OCR: First 200 chars: {repr(combined_text[:200])}")
         
         # If no text was extracted, provide helpful message
         if not combined_text.strip():
