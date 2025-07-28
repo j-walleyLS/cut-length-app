@@ -245,6 +245,11 @@ def extract_text_with_cloud_ocr(pdf_bytes, progress_callback=None):
         
         combined_text = '\n'.join(all_text)
         
+        # Debug output
+        st.sidebar.write(f"Debug OCR: Combined text length: {len(combined_text)}")
+        if combined_text:
+            st.sidebar.write(f"Debug OCR: First 200 chars: {repr(combined_text[:200])}")
+        
         # If no text was extracted, provide helpful message
         if not combined_text.strip():
             st.warning("OCR couldn't extract text from this PDF. This might be due to:")
@@ -378,6 +383,10 @@ def parse_uploaded_file(uploaded_file):
                     extracted_text = extract_text_from_image_ocr(image_bytes)
                 
                 if extracted_text:
+                    # Show what was extracted for debugging
+                    with st.sidebar.expander("🔍 Debug: Extracted Text", expanded=False):
+                        st.text_area("Raw OCR output:", extracted_text, height=200)
+                    
                     # Parse the extracted text
                     units = parse_boq_text(extracted_text)
                     
@@ -736,8 +745,8 @@ if "selected_slab_info" not in st.session_state:
     st.session_state.selected_slab_info = {}  # Store complete slab info
 if "manual_input_enabled" not in st.session_state:
     st.session_state.manual_input_enabled = False  # Default to OFF
-if "bulk_text_content" not in st.session_state:
-    st.session_state.bulk_text_content = ""  # Initialize the bulk text content
+if "boq_extracted_content" not in st.session_state:
+    st.session_state.boq_extracted_content = ""  # Initialize the extracted content
 
 # -----------------------------
 # Main UI
@@ -966,70 +975,110 @@ uploaded_file = st.sidebar.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Extract text button
-    if st.sidebar.button("📄 Extract Text", type="primary", use_container_width=True):
-        # Reset the file pointer to the beginning
-        uploaded_file.seek(0)
-        
-        # Extract text based on file type
-        extracted_text = None
-        
-        if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
-            pdf_bytes = uploaded_file.read()
+    # Test button to set a known value
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        if st.button("📄 Extract Text", type="primary", use_container_width=True):
+            # Reset the file pointer to the beginning
+            uploaded_file.seek(0)
             
-            with st.spinner("📄 Extracting text from PDF..."):
-                progress_bar = st.progress(0)
+            # Extract text based on file type
+            extracted_text = None
+            
+            if uploaded_file.type == "application/pdf" and OCR_AVAILABLE:
+                pdf_bytes = uploaded_file.read()
                 
-                def update_progress(current, total):
-                    progress_bar.progress(current / total)
+                # Test: Set a hardcoded value first
+                st.session_state.boq_extracted_content = "HARDCODED TEST BEFORE OCR"
+                st.sidebar.write("Debug: Set hardcoded value before OCR")
                 
-                extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
-                progress_bar.empty()
+                with st.spinner("📄 Extracting text from PDF..."):
+                    progress_bar = st.progress(0)
                     
-        elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
-            image_bytes = uploaded_file.read()
-            with st.spinner("🖼️ Extracting text from image..."):
-                extracted_text = extract_text_from_image_ocr(image_bytes)
+                    def update_progress(current, total):
+                        progress_bar.progress(current / total)
+                    
+                    # Let's skip OCR and just set a test value
+                    # extracted_text = extract_text_from_pdf_ocr(pdf_bytes, update_progress)
+                    extracted_text = """x1 1650×560
+x1 1650×150
+x1 2000×850
+x5 2000×350
+x6 2000×150"""
+                    
+                    st.sidebar.write("Debug: Skipped OCR, using hardcoded BOQ text")
+                    progress_bar.empty()
                 
-        elif uploaded_file.type in ["text/plain", "text/csv"]:
-            extracted_text = str(uploaded_file.read(), "utf-8")
-        
-        if extracted_text and extracted_text.strip():
-            # Parse the extracted text
-            units = parse_boq_text(extracted_text)
+                # Immediately show what we got
+                st.sidebar.write("Debug: extracted_text =", repr(extracted_text))
+                    
+            elif uploaded_file.type.startswith("image/") and OCR_AVAILABLE:
+                image_bytes = uploaded_file.read()
+                with st.spinner("🖼️ Extracting text from image..."):
+                    extracted_text = extract_text_from_image_ocr(image_bytes)
+                    
+            elif uploaded_file.type in ["text/plain", "text/csv"]:
+                extracted_text = str(uploaded_file.read(), "utf-8")
             
-            if units:
-                # Format as BOQ lines
-                boq_lines = []
-                for unit in units:
-                    boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
-                formatted_text = '\n'.join(boq_lines)
+            # Debug the extraction
+            st.sidebar.write("Debug: Type of extracted_text:", type(extracted_text))
+            st.sidebar.write("Debug: extracted_text is None?", extracted_text is None)
+            
+            if extracted_text and extracted_text.strip():  # Check for non-empty text
+                # Debug: Show what we extracted
+                st.sidebar.write("Debug: Extracted text length:", len(extracted_text))
+                st.sidebar.write("Debug: First 100 chars:", repr(extracted_text[:100]))
                 
-                # Update the session state to populate the text area
-                st.session_state.bulk_text_content = formatted_text
-                st.sidebar.success(f"✅ Found {len(units)} units!")
+                # Parse the extracted text
+                units = parse_boq_text(extracted_text)
+                
+                st.sidebar.write("Debug: Found units:", len(units) if units else 0)
+                
+                if units:
+                    # Format as BOQ lines
+                    boq_lines = []
+                    for unit in units:
+                        boq_lines.append(f"x{unit['quantity']} {unit['width']}×{unit['height']}")
+                    formatted_text = '\n'.join(boq_lines)
+                    
+                    st.sidebar.write("Debug: Formatted text:", repr(formatted_text[:100]))
+                    st.session_state.boq_extracted_content = formatted_text
+                    st.sidebar.success(f"✅ Found {len(units)} units!")
+                else:
+                    # Store raw text if no units found
+                    st.sidebar.write("Debug: Storing raw text")
+                    st.session_state.boq_extracted_content = extracted_text
+                    st.sidebar.warning("No BOQ patterns found in extracted text.")
+                
+                st.rerun()
             else:
-                # Store raw text if no units found
-                st.session_state.bulk_text_content = extracted_text
-                st.sidebar.warning("No BOQ patterns found in extracted text.")
-            
+                st.sidebar.error("No text extracted from file or text was empty")
+                st.sidebar.write("Debug: extracted_text value:", repr(extracted_text))
+    
+    with col2:
+        if st.button("Test Set", type="secondary", use_container_width=True):
+            st.session_state.boq_extracted_content = "TEST VALUE: x1 1650×560"
             st.rerun()
-        else:
-            st.sidebar.error("No text extracted from file")
 
-# Text area for manual input - now uses session state value
+# Debug: Always show what's in session state
+st.sidebar.write("Debug - Session state content:", st.session_state.get('boq_extracted_content', 'EMPTY'))
+
+# Show extracted text if available
+if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracted_content:
+    st.sidebar.markdown("**📋 Extracted BOQ Text:**")
+    
+    # Simple direct display
+    st.sidebar.code(st.session_state.boq_extracted_content)
+    
+    st.sidebar.info("✅ Copy the text above and paste it in the box below")
+
+# Original text area for manual input
 bulk_text = st.sidebar.text_area(
     "Or Paste BOQ Text",
-    value=st.session_state.bulk_text_content,  # Use session state value
     placeholder="x1 1650×560\nx1 1650×150\nx1 2000×850\nx5 2000×350\nx6 2000×150",
     height=120,
-    help="Paste your BOQ text here",
-    key="bulk_text_area"
+    help="Paste your BOQ text here"
 )
-
-# Update session state when text area changes
-if bulk_text != st.session_state.bulk_text_content:
-    st.session_state.bulk_text_content = bulk_text
 
 if bulk_text.strip():
     if st.sidebar.button("Import from Text", type="primary", use_container_width=True):
@@ -1105,8 +1154,8 @@ if bulk_text.strip():
             # Clear manual input rows after successful import
             st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
             
-            # Clear the bulk text content after successful import
-            st.session_state.bulk_text_content = ""
+            # Clear the extracted text
+            st.session_state.boq_extracted_content = ""
             
             st.sidebar.success(f"✅ Imported {len(imported_units)} unit types and updated list!")
             st.rerun()
@@ -1287,7 +1336,7 @@ if st.session_state.units:
     if st.sidebar.button("Clear All", type="secondary", use_container_width=True):
         st.session_state.units = []
         st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
-        st.session_state.bulk_text_content = ""  # Also clear bulk text content
+        st.session_state.boq_extracted_content = ""  # Also clear extracted content
         st.rerun()
 
 # -----------------------------
