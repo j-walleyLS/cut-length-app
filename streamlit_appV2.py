@@ -1070,7 +1070,89 @@ if 'boq_extracted_content' in st.session_state and st.session_state.boq_extracte
     # Simple direct display
     st.sidebar.code(st.session_state.boq_extracted_content)
     
-    st.sidebar.info("✅ Copy the text above and paste it in the box below")
+    # Add the "Import from Extract" button
+    if st.sidebar.button("📥 Import from Extract", type="primary", use_container_width=True):
+        imported_units = parse_boq_text(st.session_state.boq_extracted_content)
+        if imported_units:
+            # First, consolidate any existing manual input rows and existing units
+            consolidated_units = {}
+            
+            # Add existing units from the list
+            for unit in st.session_state.units:
+                forced_key = tuple(unit["forced_slabs"][0]) if unit.get("forced_slabs") else None
+                unit_key = (unit["width"], unit["height"], forced_key)
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": unit.get("forced_slabs", [])
+                    }
+            
+            # Add any units from manual input rows (only if enabled)
+            if st.session_state.manual_input_enabled:
+                for row_data in st.session_state.unit_input_rows:
+                    if row_data["width"] and row_data["height"] and row_data["quantity"]:
+                        forced_slabs = []
+                        if row_data["forced"] and row_data["forced"] != "Any":
+                            for slab in slab_sizes:
+                                if f"{slab[0]}×{slab[1]}" == row_data["forced"]:
+                                    forced_slabs = [slab]
+                                    break
+                        
+                        forced_key = tuple(forced_slabs[0]) if forced_slabs else None
+                        unit_key = (row_data["width"], row_data["height"], forced_key)
+                        
+                        if unit_key in consolidated_units:
+                            consolidated_units[unit_key]["quantity"] += row_data["quantity"]
+                        else:
+                            consolidated_units[unit_key] = {
+                                "width": row_data["width"],
+                                "height": row_data["height"],
+                                "quantity": row_data["quantity"],
+                                "forced_slabs": forced_slabs
+                            }
+            
+            # Add imported units to consolidated list
+            for unit in imported_units:
+                unit_key = (unit["width"], unit["height"], None)  # Imported units have no forced slabs
+                
+                if unit_key in consolidated_units:
+                    consolidated_units[unit_key]["quantity"] += unit["quantity"]
+                else:
+                    consolidated_units[unit_key] = {
+                        "width": unit["width"],
+                        "height": unit["height"],
+                        "quantity": unit["quantity"],
+                        "forced_slabs": []
+                    }
+            
+            # Update the session state with all consolidated units
+            st.session_state.units = []
+            for i, (unit_key, unit_data) in enumerate(consolidated_units.items()):
+                st.session_state.units.append({
+                    "width": unit_data["width"],
+                    "height": unit_data["height"],
+                    "quantity": unit_data["quantity"],
+                    "forced_slabs": unit_data["forced_slabs"],
+                    "order": i
+                })
+            
+            # Clear manual input rows after successful import
+            st.session_state.unit_input_rows = [{"width": "", "height": "", "quantity": 1, "forced": "Any"}]
+            
+            # Clear the extracted text
+            st.session_state.boq_extracted_content = ""
+            
+            st.sidebar.success(f"✅ Imported {len(imported_units)} unit types from extracted text!")
+            st.rerun()
+        else:
+            st.sidebar.error("❌ No valid units found in extracted text.")
+    
+    st.sidebar.info("✅ Click 'Import from Extract' to add these units to your list")
 
 # Original text area for manual input
 bulk_text = st.sidebar.text_area(
